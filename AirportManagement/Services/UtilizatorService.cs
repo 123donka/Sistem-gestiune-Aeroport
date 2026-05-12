@@ -1,0 +1,89 @@
+using System.Data;
+using AirportManagement.Data;
+using AirportManagement.Models;
+using MySql.Data.MySqlClient;
+
+namespace AirportManagement.Services
+{
+    public class UtilizatorService
+    {
+        public DataTable GetAll()
+        {
+            var dt = new DataTable();
+            using var conn = DbContext.GetConnection();
+            conn.Open();
+            using var cmd = new MySqlCommand("SELECT id,nume,username,rol FROM utilizatori", conn);
+            using var adapter = new MySqlDataAdapter(cmd);
+            adapter.Fill(dt);
+            return dt;
+        }
+
+        public Utilizator? GetById(int id)
+        {
+            using var conn = DbContext.GetConnection();
+            conn.Open();
+            using var cmd = new MySqlCommand("SELECT id,nume,username,parola,rol FROM utilizatori WHERE id=@id LIMIT 1", conn);
+            cmd.Parameters.AddWithValue("@id", id);
+            using var reader = cmd.ExecuteReader();
+            if (!reader.Read()) return null;
+            return new Utilizator
+            {
+                Id = reader.GetInt32("id"),
+                Nume = reader.GetString("nume"),
+                Username = reader.GetString("username"),
+                Parola = reader.GetString("parola"),
+                Rol = reader.GetString("rol")
+            };
+        }
+
+        public bool Create(Utilizator u)
+        {
+            using var conn = DbContext.GetConnection();
+            conn.Open();
+            using var check = new MySqlCommand("SELECT COUNT(1) FROM utilizatori WHERE username=@username", conn);
+            check.Parameters.AddWithValue("@username", u.Username);
+            var exists = Convert.ToInt32(check.ExecuteScalar() ?? 0) > 0;
+            if (exists) return false;
+            using var cmd = new MySqlCommand("INSERT INTO utilizatori(nume,username,parola,rol) VALUES(@n,@u,@p,@r)", conn);
+            cmd.Parameters.AddWithValue("@n", u.Nume);
+            cmd.Parameters.AddWithValue("@u", u.Username);
+            cmd.Parameters.AddWithValue("@p", u.Parola);
+            cmd.Parameters.AddWithValue("@r", u.Rol);
+            return cmd.ExecuteNonQuery() > 0;
+        }
+
+        public bool Update(Utilizator u)
+        {
+            using var conn = DbContext.GetConnection();
+            conn.Open();
+            if (!string.IsNullOrEmpty(u.Parola))
+            {
+                using var cmd = new MySqlCommand("UPDATE utilizatori SET nume=@n,username=@u,parola=@p,rol=@r WHERE id=@id", conn);
+                cmd.Parameters.AddWithValue("@n", u.Nume);
+                cmd.Parameters.AddWithValue("@u", u.Username);
+                cmd.Parameters.AddWithValue("@p", u.Parola);
+                cmd.Parameters.AddWithValue("@r", u.Rol);
+                cmd.Parameters.AddWithValue("@id", u.Id);
+                return cmd.ExecuteNonQuery() > 0;
+            }
+            else
+            {
+                using var cmd = new MySqlCommand("UPDATE utilizatori SET nume=@n,username=@u,rol=@r WHERE id=@id", conn);
+                cmd.Parameters.AddWithValue("@n", u.Nume);
+                cmd.Parameters.AddWithValue("@u", u.Username);
+                cmd.Parameters.AddWithValue("@r", u.Rol);
+                cmd.Parameters.AddWithValue("@id", u.Id);
+                return cmd.ExecuteNonQuery() > 0;
+            }
+        }
+
+        public bool Delete(int id)
+        {
+            using var conn = DbContext.GetConnection();
+            conn.Open();
+            using var cmd = new MySqlCommand("DELETE FROM utilizatori WHERE id=@id", conn);
+            cmd.Parameters.AddWithValue("@id", id);
+            return cmd.ExecuteNonQuery() > 0;
+        }
+    }
+}

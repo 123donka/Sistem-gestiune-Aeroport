@@ -1,0 +1,2 @@
+Placeholder pentru `logo.png`.
+Adăugați o imagine `logo.png` în acest folder pentru afișarea logo-ului.
