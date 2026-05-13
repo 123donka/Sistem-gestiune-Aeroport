@@ -17,7 +17,6 @@ namespace AirportManagement.Views
         private Label lblTitle;
         private CheckBox chkShowPassword;
         private Panel card;
-        private Panel shadow;
 
         private AuthController authController = new AuthController();
 
@@ -57,23 +56,7 @@ namespace AirportManagement.Views
             var cardWidth = 420;
             var cardHeight = 500;
 
-            // soft shadow panel (drawn with multiple translucent rounded rects)
-            shadow = new Panel { Width = cardWidth + 40, Height = cardHeight + 40, BackColor = Color.Transparent };
-            shadow.Anchor = AnchorStyles.None;
-            shadow.Paint += (s, e) =>
-            {
-                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                // draw concentric rounded rects to simulate a soft shadow
-                for (int i = 0; i < 10; i++)
-                {
-                    int alpha = 36 - i * 3;
-                    if (alpha <= 0) break;
-                    using var brush = new SolidBrush(Color.FromArgb(alpha, 8, 20, 48));
-                    var r = new Rectangle(i * 2, i * 2, shadow.Width - i * 4, shadow.Height - i * 4);
-                    e.Graphics.FillPath(brush, GetRoundedPath(r, 20));
-                }
-            };
-            Controls.Add(shadow);
+            // shadow drawing removed (was using transparent Panel which caused repaint artefacts)
 
             // accent stripes removed per user request
 
@@ -188,16 +171,9 @@ namespace AirportManagement.Views
                 var top = Math.Max(40, (ClientSize.Height - card.Height) / 2);
                 var shadowOffset = 16;
 
-                // shadow is slightly larger, offset to the right/down
-                shadow.Left = centerX + shadowOffset - 20;
-                shadow.Top = top + shadowOffset - 20;
-
-                // card sits above shadow
+                // card sits above the background shadow (shadow now drawn in form Paint)
                 card.Left = centerX;
                 card.Top = top;
-
-                // stacking order: shadow behind card
-                shadow.SendToBack();
                 card.BringToFront();
             }
 
@@ -207,8 +183,33 @@ namespace AirportManagement.Views
 
         private void LoginForm_Paint(object? sender, PaintEventArgs e)
         {
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             using var brush = new LinearGradientBrush(ClientRectangle, ColorTranslator.FromHtml("#0F172A"), ColorTranslator.FromHtml("#1E3A8A"), LinearGradientMode.Vertical);
             e.Graphics.FillRectangle(brush, ClientRectangle);
+
+            // draw soft shadow behind centered card (drawn on form to avoid transparent child artifacts)
+            if (card != null)
+            {
+                var cardWidth = card.Width;
+                var cardHeight = card.Height;
+                var centerX = (ClientSize.Width - cardWidth) / 2;
+                var top = Math.Max(40, (ClientSize.Height - cardHeight) / 2);
+                var shadowOffset = 16;
+
+                var shadowLeft = centerX + shadowOffset - 20;
+                var shadowTop = top + shadowOffset - 20;
+                var shadowWidth = cardWidth + 40;
+                var shadowHeight = cardHeight + 40;
+
+                for (int i = 0; i < 10; i++)
+                {
+                    int alpha = 36 - i * 3;
+                    if (alpha <= 0) break;
+                    using var sbrush = new SolidBrush(Color.FromArgb(alpha, 8, 20, 48));
+                    var r = new Rectangle(shadowLeft + i * 2, shadowTop + i * 2, shadowWidth - i * 4, shadowHeight - i * 4);
+                    e.Graphics.FillPath(sbrush, GetRoundedPath(r, 20));
+                }
+            }
         }
 
         private void BtnConectare_Click(object? sender, EventArgs e)

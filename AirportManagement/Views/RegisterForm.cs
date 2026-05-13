@@ -43,30 +43,9 @@ namespace AirportManagement.Views
             Width = 920; Height = 760; StartPosition = FormStartPosition.CenterParent; Font = new Font("Segoe UI", 9);
             DoubleBuffered = true;
 
-            this.Paint += (s, e) =>
-            {
-                using var brush = new LinearGradientBrush(ClientRectangle, ColorTranslator.FromHtml("#0F172A"), ColorTranslator.FromHtml("#1E3A8A"), LinearGradientMode.Vertical);
-                e.Graphics.FillRectangle(brush, ClientRectangle);
-            };
-
             var cardWidth = 520; var cardHeight = 560;
 
-            // soft shadow panel
-            var shadow = new Panel { Width = cardWidth + 40, Height = cardHeight + 40, BackColor = Color.Transparent };
-            shadow.Anchor = AnchorStyles.None;
-            shadow.Paint += (s, e) =>
-            {
-                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                for (int i = 0; i < 10; i++)
-                {
-                    int alpha = 36 - i * 3;
-                    if (alpha <= 0) break;
-                    using var brush = new SolidBrush(Color.FromArgb(alpha, 8, 20, 48));
-                    var r = new Rectangle(i * 2, i * 2, shadow.Width - i * 4, shadow.Height - i * 4);
-                    e.Graphics.FillPath(brush, GetRoundedPath(r, 20));
-                }
-            };
-            Controls.Add(shadow);
+            // shadow drawing removed (transparent Panel caused repaint artefacts)
 
             var card = new Panel { Width = cardWidth, Height = cardHeight, BackColor = Color.White };
             card.Anchor = AnchorStyles.None;
@@ -182,18 +161,45 @@ namespace AirportManagement.Views
                 var top = Math.Max(40, (ClientSize.Height - card.Height) / 2);
                 var shadowOffset = 16;
 
-                shadow.Left = centerX + shadowOffset - 20;
-                shadow.Top = top + shadowOffset - 20;
-
                 card.Left = centerX;
                 card.Top = top;
-
-                shadow.SendToBack();
                 card.BringToFront();
             }
 
             this.Load += (s, e) => CenterCard();
             this.Resize += (s, e) => CenterCard();
+
+            // draw background gradient and shadow on the form (shadow behind card)
+            this.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using var brush = new LinearGradientBrush(ClientRectangle, ColorTranslator.FromHtml("#0F172A"), ColorTranslator.FromHtml("#1E3A8A"), LinearGradientMode.Vertical);
+                e.Graphics.FillRectangle(brush, ClientRectangle);
+
+                // draw soft shadow behind centered card
+                if (card != null)
+                {
+                    var cardWidthLocal = card.Width;
+                    var cardHeightLocal = card.Height;
+                    var centerX = (ClientSize.Width - cardWidthLocal) / 2;
+                    var top = Math.Max(40, (ClientSize.Height - cardHeightLocal) / 2);
+                    var shadowOffset = 16;
+
+                    var shadowLeft = centerX + shadowOffset - 20;
+                    var shadowTop = top + shadowOffset - 20;
+                    var shadowWidth = cardWidthLocal + 40;
+                    var shadowHeight = cardHeightLocal + 40;
+
+                    for (int i = 0; i < 10; i++)
+                    {
+                        int alpha = 36 - i * 3;
+                        if (alpha <= 0) break;
+                        using var sbrush = new SolidBrush(Color.FromArgb(alpha, 8, 20, 48));
+                        var r = new Rectangle(shadowLeft + i * 2, shadowTop + i * 2, shadowWidth - i * 4, shadowHeight - i * 4);
+                        e.Graphics.FillPath(sbrush, GetRoundedPath(r, 20));
+                    }
+                }
+            };
         }
 
         private void BtnRegister_Click(object? sender, EventArgs e)
