@@ -81,25 +81,13 @@ namespace AirportManagement.Views
             };
             card.Controls.Add(lblTitle);
 
-            var picLogo = new PictureBox { Width = 72, Height = 72, Top = 80, Left = (card.Width - 72) / 2, SizeMode = PictureBoxSizeMode.Zoom };
-            var logoPath = Path.Combine(AppContext.BaseDirectory, "Resources", "logo.png");
-            if (File.Exists(logoPath))
-            {
-                try { picLogo.Image = Image.FromFile(logoPath); }
-                catch { picLogo.Visible = false; }
-                card.Controls.Add(picLogo);
-            }
-            else
-            {
-                // no placeholder when logo missing — keep layout compact
-                picLogo.Visible = false;
-            }
+            // logo removed per user request: no icon is shown on the login card
 
             // default border color for inputs
             var inpDefaultBorder = ColorTranslator.FromHtml("#E5E7EB");
 
             // Username input container
-            var inpUser = new Panel { Left = 40, Top = 170, Width = card.Width - 80, Height = 44, BackColor = Color.White, Tag = inpDefaultBorder };
+            var inpUser = new Panel { Left = 40, Top = 130, Width = card.Width - 80, Height = 44, BackColor = Color.White, Tag = inpDefaultBorder };
             inpUser.Paint += (s, e) => {
                 var p = (Panel)s;
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
@@ -118,7 +106,7 @@ namespace AirportManagement.Views
             card.Controls.Add(inpUser);
 
             // Password input container
-            var inpPass = new Panel { Left = 40, Top = 230, Width = card.Width - 80, Height = 44, BackColor = Color.White };
+            var inpPass = new Panel { Left = 40, Top = 190, Width = card.Width - 80, Height = 44, BackColor = Color.White };
             inpPass.Paint += (s, e) => { e.Graphics.SmoothingMode = SmoothingMode.AntiAlias; using var pb = new Pen(ColorTranslator.FromHtml("#E5E7EB")); e.Graphics.DrawPath(pb, GetRoundedPath(new Rectangle(0, 0, inpPass.Width - 1, inpPass.Height - 1), 8)); };
             inpPass.Region = new Region(GetRoundedPath(new Rectangle(0, 0, inpPass.Width, inpPass.Height), 8));
 
@@ -135,7 +123,7 @@ namespace AirportManagement.Views
 
             card.Controls.Add(inpPass);
 
-            btnConectare = new Button { Text = "Conectare", Left = 40, Top = 300, Width = card.Width - 80, Height = 46, BackColor = ColorTranslator.FromHtml("#2563EB"), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+            btnConectare = new Button { Text = "Conectare", Left = 40, Top = 260, Width = card.Width - 80, Height = 46, BackColor = ColorTranslator.FromHtml("#2563EB"), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
             btnConectare.FlatAppearance.BorderSize = 0; btnConectare.Font = new Font("Segoe UI", 10, FontStyle.Bold);
             btnConectare.Click += BtnConectare_Click;
             btnConectare.Region = new Region(GetRoundedPath(new Rectangle(0, 0, btnConectare.Width, btnConectare.Height), 12));
@@ -154,10 +142,10 @@ namespace AirportManagement.Views
             };
             card.Controls.Add(btnConectare);
 
-            lblError = new Label { ForeColor = ColorTranslator.FromHtml("#DC2626"), Left = 40, Top = 360, Width = card.Width - 80, Visible = false, TextAlign = ContentAlignment.MiddleCenter };
+            lblError = new Label { ForeColor = ColorTranslator.FromHtml("#DC2626"), Left = 40, Top = 320, Width = card.Width - 80, Visible = false, TextAlign = ContentAlignment.MiddleCenter };
             card.Controls.Add(lblError);
 
-            var lnkRegister = new LinkLabel { Left = 40, Top = 390, Width = card.Width - 80, Text = "Nu ai cont? Înregistrează-te", TextAlign = ContentAlignment.MiddleCenter };
+            var lnkRegister = new LinkLabel { Left = 40, Top = 350, Width = card.Width - 80, Text = "Nu ai cont? Înregistrează-te", TextAlign = ContentAlignment.MiddleCenter };
             lnkRegister.Click += (s, e) => { var reg = new RegisterForm(); reg.ShowDialog(); };
             card.Controls.Add(lnkRegister);
 
@@ -230,11 +218,12 @@ namespace AirportManagement.Views
             }
 
             Hide();
-            if (user.Rol?.ToLower() == "admin")
+            var role = (user.Rol ?? string.Empty).ToLower();
+            if (role.Contains("admin"))
             {
-                var admin = new AdminDashboard(user);
-                admin.FormClosed += (s, e) => this.Show();
-                admin.Show();
+                var adminForm = new AdminForm();
+                adminForm.FormClosed += (s, e) => this.Show();
+                adminForm.Show();
             }
             else
             {

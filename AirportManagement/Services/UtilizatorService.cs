@@ -14,7 +14,18 @@ namespace AirportManagement.Services
             conn.Open();
             var nameCol = DbContext.NameColumn("utilizatori");
             var pk = DbContext.PrimaryKeyColumnName("utilizatori");
-            using var cmd = new MySqlCommand($"SELECT `{pk}` AS id,`{nameCol}`,username,rol FROM utilizatori", conn);
+
+            // Include last activity from logactivitati (if any) and a simple "activ" flag
+            var sql = $@"
+SELECT u.`{pk}` AS id,
+       u.`{nameCol}` AS nume,
+       u.username,
+       u.rol,
+       (SELECT MAX(data) FROM logactivitati la WHERE la.utilizator = u.username) AS ultima_logare,
+       CASE WHEN (SELECT MAX(data) FROM logactivitati la WHERE la.utilizator = u.username) >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY) THEN 1 ELSE 0 END AS activ
+FROM utilizatori u";
+
+            using var cmd = new MySqlCommand(sql, conn);
             using var adapter = new MySqlDataAdapter(cmd);
             adapter.Fill(dt);
             return dt;
@@ -99,7 +110,8 @@ namespace AirportManagement.Services
         {
             using var conn = DbContext.GetConnection();
             conn.Open();
-            using var cmd = new MySqlCommand("DELETE FROM utilizatori WHERE id=@id", conn);
+            var pk = DbContext.PrimaryKeyColumnName("utilizatori");
+            using var cmd = new MySqlCommand($"DELETE FROM utilizatori WHERE `{pk}`=@id", conn);
             cmd.Parameters.AddWithValue("@id", id);
             return cmd.ExecuteNonQuery() > 0;
         }
