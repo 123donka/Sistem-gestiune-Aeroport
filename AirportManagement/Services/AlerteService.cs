@@ -12,7 +12,8 @@ namespace AirportManagement.Services
             var dt = new DataTable();
             using var conn = DbContext.GetConnection();
             conn.Open();
-            using var cmd = new MySqlCommand("SELECT id,mesaj,citita,data FROM alerte", conn);
+            var pk = DbContext.PrimaryKeyColumnName("alerte");
+            using var cmd = new MySqlCommand($"SELECT `{pk}` AS id,mesaj,citita,data FROM alerte", conn);
             using var adapter = new MySqlDataAdapter(cmd);
             adapter.Fill(dt);
             return dt;
@@ -22,7 +23,8 @@ namespace AirportManagement.Services
         {
             using var conn = DbContext.GetConnection();
             conn.Open();
-            using var cmd = new MySqlCommand("UPDATE alerte SET citita=1 WHERE id=@id", conn);
+            var pk = DbContext.PrimaryKeyColumnName("alerte");
+            using var cmd = new MySqlCommand($"UPDATE alerte SET citita=1 WHERE `{pk}`=@id", conn);
             cmd.Parameters.AddWithValue("@id", id);
             return cmd.ExecuteNonQuery() > 0;
         }

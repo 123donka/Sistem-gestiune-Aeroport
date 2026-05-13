@@ -12,7 +12,8 @@ namespace AirportManagement.Services
             var dt = new DataTable();
             using var conn = DbContext.GetConnection();
             conn.Open();
-            using var cmd = new MySqlCommand("SELECT id,cod,sursa,destinatie,plecare,sosire,status FROM zboruri", conn);
+            var pk = DbContext.PrimaryKeyColumnName("zboruri");
+            using var cmd = new MySqlCommand($"SELECT `{pk}` AS id,cod,sursa,destinatie,plecare,sosire,status FROM zboruri", conn);
             using var adapter = new MySqlDataAdapter(cmd);
             adapter.Fill(dt);
             return dt;
@@ -36,7 +37,8 @@ namespace AirportManagement.Services
         {
             using var conn = DbContext.GetConnection();
             conn.Open();
-            using var cmd = new MySqlCommand("UPDATE zboruri SET cod=@cod,sursa=@src,destinatie=@dst,plecare=@plec,sosire=@sos,status=@st WHERE id=@id", conn);
+            var pk = DbContext.PrimaryKeyColumnName("zboruri");
+            using var cmd = new MySqlCommand($"UPDATE zboruri SET cod=@cod,sursa=@src,destinatie=@dst,plecare=@plec,sosire=@sos,status=@st WHERE `{pk}`=@id", conn);
             cmd.Parameters.AddWithValue("@cod", z.Cod);
             cmd.Parameters.AddWithValue("@src", z.Sursa);
             cmd.Parameters.AddWithValue("@dst", z.Destinatie);
@@ -51,7 +53,8 @@ namespace AirportManagement.Services
         {
             using var conn = DbContext.GetConnection();
             conn.Open();
-            using var cmd = new MySqlCommand("DELETE FROM zboruri WHERE id=@id", conn);
+            var pk = DbContext.PrimaryKeyColumnName("zboruri");
+            using var cmd = new MySqlCommand($"DELETE FROM zboruri WHERE `{pk}`=@id", conn);
             cmd.Parameters.AddWithValue("@id", id);
             return cmd.ExecuteNonQuery() > 0;
         }

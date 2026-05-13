@@ -12,7 +12,9 @@ namespace AirportManagement.Services
             var dt = new DataTable();
             using var conn = DbContext.GetConnection();
             conn.Open();
-            using var cmd = new MySqlCommand("SELECT id,nume,tip,disponibila FROM resurse", conn);
+            var nameCol = DbContext.NameColumn("resurse");
+            var pk = DbContext.PrimaryKeyColumnName("resurse");
+            using var cmd = new MySqlCommand($"SELECT `{pk}` AS id,`{nameCol}`,tip,disponibila FROM resurse", conn);
             using var adapter = new MySqlDataAdapter(cmd);
             adapter.Fill(dt);
             return dt;
@@ -22,7 +24,8 @@ namespace AirportManagement.Services
         {
             using var conn = DbContext.GetConnection();
             conn.Open();
-            using var cmd = new MySqlCommand("INSERT INTO resurse(nume,tip,disponibila) VALUES(@n,@t,@d)", conn);
+            var nameColInsert = DbContext.NameColumn("resurse");
+            using var cmd = new MySqlCommand($"INSERT INTO resurse(`{nameColInsert}`,tip,disponibila) VALUES(@n,@t,@d)", conn);
             cmd.Parameters.AddWithValue("@n", r.Nume);
             cmd.Parameters.AddWithValue("@t", r.Tip);
             cmd.Parameters.AddWithValue("@d", r.Disponibila);
@@ -33,7 +36,9 @@ namespace AirportManagement.Services
         {
             using var conn = DbContext.GetConnection();
             conn.Open();
-            using var cmd = new MySqlCommand("UPDATE resurse SET nume=@n,tip=@t,disponibila=@d WHERE id=@id", conn);
+            var nameColUpdate = DbContext.NameColumn("resurse");
+            var pk = DbContext.PrimaryKeyColumnName("resurse");
+            using var cmd = new MySqlCommand($"UPDATE resurse SET `{nameColUpdate}`=@n,tip=@t,disponibila=@d WHERE `{pk}`=@id", conn);
             cmd.Parameters.AddWithValue("@n", r.Nume);
             cmd.Parameters.AddWithValue("@t", r.Tip);
             cmd.Parameters.AddWithValue("@d", r.Disponibila);
@@ -45,7 +50,8 @@ namespace AirportManagement.Services
         {
             using var conn = DbContext.GetConnection();
             conn.Open();
-            using var cmd = new MySqlCommand("DELETE FROM resurse WHERE id=@id", conn);
+            var pk = DbContext.PrimaryKeyColumnName("resurse");
+            using var cmd = new MySqlCommand($"DELETE FROM resurse WHERE `{pk}`=@id", conn);
             cmd.Parameters.AddWithValue("@id", id);
             return cmd.ExecuteNonQuery() > 0;
         }

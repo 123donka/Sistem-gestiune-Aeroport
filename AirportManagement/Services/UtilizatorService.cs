@@ -12,7 +12,9 @@ namespace AirportManagement.Services
             var dt = new DataTable();
             using var conn = DbContext.GetConnection();
             conn.Open();
-            using var cmd = new MySqlCommand("SELECT id,nume,username,rol FROM utilizatori", conn);
+            var nameCol = DbContext.NameColumn("utilizatori");
+            var pk = DbContext.PrimaryKeyColumnName("utilizatori");
+            using var cmd = new MySqlCommand($"SELECT `{pk}` AS id,`{nameCol}`,username,rol FROM utilizatori", conn);
             using var adapter = new MySqlDataAdapter(cmd);
             adapter.Fill(dt);
             return dt;
@@ -22,14 +24,16 @@ namespace AirportManagement.Services
         {
             using var conn = DbContext.GetConnection();
             conn.Open();
-            using var cmd = new MySqlCommand("SELECT id,nume,username,parola,rol FROM utilizatori WHERE id=@id LIMIT 1", conn);
+            var nameCol = DbContext.NameColumn("utilizatori");
+            var pk = DbContext.PrimaryKeyColumnName("utilizatori");
+            using var cmd = new MySqlCommand($"SELECT `{pk}` AS id,`{nameCol}`,username,parola,rol FROM utilizatori WHERE `{pk}`=@id LIMIT 1", conn);
             cmd.Parameters.AddWithValue("@id", id);
             using var reader = cmd.ExecuteReader();
             if (!reader.Read()) return null;
             return new Utilizator
             {
                 Id = reader.GetInt32("id"),
-                Nume = reader.GetString("nume"),
+                Nume = reader.IsDBNull(reader.GetOrdinal(nameCol)) ? string.Empty : reader.GetString(nameCol),
                 Username = reader.GetString("username"),
                 Parola = reader.GetString("parola"),
                 Rol = reader.GetString("rol")
@@ -44,10 +48,20 @@ namespace AirportManagement.Services
             check.Parameters.AddWithValue("@username", u.Username);
             var exists = Convert.ToInt32(check.ExecuteScalar() ?? 0) > 0;
             if (exists) return false;
-            using var cmd = new MySqlCommand("INSERT INTO utilizatori(nume,username,parola,rol) VALUES(@n,@u,@p,@r)", conn);
+            var nameColInsert = DbContext.NameColumn("utilizatori");
+            var hasParolaHash = DbContext.ColumnExists("utilizatori", "parola_hash");
+            string sql;
+            if (hasParolaHash)
+                sql = $"INSERT INTO utilizatori(`{nameColInsert}`,username,parola,parola_hash,rol) VALUES(@n,@u,@p,@ph,@r)";
+            else
+                sql = $"INSERT INTO utilizatori(`{nameColInsert}`,username,parola,rol) VALUES(@n,@u,@p,@r)";
+
+            using var cmd = new MySqlCommand(sql, conn);
             cmd.Parameters.AddWithValue("@n", u.Nume);
             cmd.Parameters.AddWithValue("@u", u.Username);
             cmd.Parameters.AddWithValue("@p", u.Parola);
+            if (hasParolaHash)
+                cmd.Parameters.AddWithValue("@ph", u.Parola);
             cmd.Parameters.AddWithValue("@r", u.Rol);
             return cmd.ExecuteNonQuery() > 0;
         }
@@ -58,7 +72,9 @@ namespace AirportManagement.Services
             conn.Open();
             if (!string.IsNullOrEmpty(u.Parola))
             {
-                using var cmd = new MySqlCommand("UPDATE utilizatori SET nume=@n,username=@u,parola=@p,rol=@r WHERE id=@id", conn);
+                var nameColUpdate = DbContext.NameColumn("utilizatori");
+                var pk = DbContext.PrimaryKeyColumnName("utilizatori");
+                using var cmd = new MySqlCommand($"UPDATE utilizatori SET `{nameColUpdate}`=@n,username=@u,parola=@p,rol=@r WHERE `{pk}`=@id", conn);
                 cmd.Parameters.AddWithValue("@n", u.Nume);
                 cmd.Parameters.AddWithValue("@u", u.Username);
                 cmd.Parameters.AddWithValue("@p", u.Parola);
@@ -68,7 +84,9 @@ namespace AirportManagement.Services
             }
             else
             {
-                using var cmd = new MySqlCommand("UPDATE utilizatori SET nume=@n,username=@u,rol=@r WHERE id=@id", conn);
+                var nameColUpdate = DbContext.NameColumn("utilizatori");
+                var pk = DbContext.PrimaryKeyColumnName("utilizatori");
+                using var cmd = new MySqlCommand($"UPDATE utilizatori SET `{nameColUpdate}`=@n,username=@u,rol=@r WHERE `{pk}`=@id", conn);
                 cmd.Parameters.AddWithValue("@n", u.Nume);
                 cmd.Parameters.AddWithValue("@u", u.Username);
                 cmd.Parameters.AddWithValue("@r", u.Rol);
