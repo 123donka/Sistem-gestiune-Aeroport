@@ -10,15 +10,21 @@ namespace AirportManagement.Views
     public class AdminForm : Form
     {
         private DataGridView dgv;
-        private UtilizatoriController _controller = new UtilizatoriController();
+        private readonly UtilizatoriController _controller = new UtilizatoriController();
         private System.Data.DataTable _dt;
         private TextBox txtSearch;
         private Button btnAdd;
+        private Button btnThemeToggle;
         private Button btnHeaderAction;
         private Label lblCurrentUser;
         private TabControl tabControl;
         private Panel header;
-        private Utilizator? _currentUser;
+        private Panel sidebar;
+        private Panel mainPanel;
+        private Panel cardPanel;
+        private Label pageTitle;
+        private readonly Utilizator? _currentUser;
+        private bool _darkMode;
 
         public AdminForm(Utilizator? currentUser = null)
         {
@@ -29,72 +35,179 @@ namespace AirportManagement.Views
 
         private void InitializeComponent()
         {
-            Text = "Administrare"; Width = 1000; Height = 680; StartPosition = FormStartPosition.CenterParent; Font = new Font("Segoe UI", 9);
-            BackColor = ColorTranslator.FromHtml("#F8F9FA");
+            Text = "Administrare";
+            Width = 1200;
+            Height = 720;
+            StartPosition = FormStartPosition.CenterParent;
+            Font = new Font("Segoe UI", 10);
+            BackColor = ColorTranslator.FromHtml("#F3F4F6");
 
-            header = new Panel { Height = 70, Dock = DockStyle.Top, BackColor = ColorTranslator.FromHtml("#2563EB") };
-            var lblTitle = new Label { Text = "Administrare", Left = 20, Top = 18, AutoSize = true, Font = new Font("Segoe UI", 16, FontStyle.Bold), ForeColor = Color.White, BackColor = Color.Transparent };
-            var userName = string.IsNullOrWhiteSpace(_currentUser?.Nume) ? _currentUser?.Username ?? "Admin" : _currentUser.Nume;
-            var userRole = string.IsNullOrWhiteSpace(_currentUser?.Rol) ? "Admin" : char.ToUpper(_currentUser.Rol[0]) + _currentUser.Rol.Substring(1);
+            header = new Panel { Height = 64, Dock = DockStyle.Top, BackColor = ColorTranslator.FromHtml("#1E3A8A") };
+            var appTitle = new Label
+            {
+                Text = "Aeroport Management",
+                Left = 24,
+                Top = 19,
+                AutoSize = true,
+                Font = new Font("Segoe UI", 13, FontStyle.Bold),
+                ForeColor = Color.White,
+                BackColor = Color.Transparent
+            };
+
+            var userName = string.IsNullOrWhiteSpace(_currentUser?.Nume) ? _currentUser?.Username ?? "Administrator" : _currentUser.Nume;
+            var userRole = string.IsNullOrWhiteSpace(_currentUser?.Rol) ? "Admin" : FormatRole(_currentUser.Rol);
             lblCurrentUser = new Label
             {
-                Text = $"{userName} | {userRole}",
+                Text = $"{userName}  |  {userRole}",
                 AutoSize = true,
-                Top = 24,
+                Top = 21,
                 ForeColor = Color.White,
                 BackColor = Color.Transparent,
-                Font = new Font("Segoe UI", 10, FontStyle.Bold)
+                Font = new Font("Segoe UI", 11, FontStyle.Bold)
             };
+
+            btnThemeToggle = new Button
+            {
+                Text = "Dark",
+                Width = 74,
+                Height = 30,
+                Top = 17,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                BackColor = ColorTranslator.FromHtml("#2563EB"),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold)
+            };
+            btnThemeToggle.FlatAppearance.BorderSize = 0;
+            btnThemeToggle.Click += (s, e) =>
+            {
+                _darkMode = !_darkMode;
+                ApplyTheme();
+            };
+
             btnHeaderAction = new Button
             {
                 Text = "Deconectare",
-                Width = 130,
-                Height = 34,
-                Left = 0,
-                Top = 18,
+                Width = 122,
+                Height = 30,
+                Top = 17,
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                BackColor = ColorTranslator.FromHtml("#DC2626"),
+                BackColor = Color.Transparent,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Cursor = Cursors.Hand
+                Cursor = Cursors.Hand,
+                Font = new Font("Segoe UI", 10, FontStyle.Bold)
             };
             btnHeaderAction.FlatAppearance.BorderSize = 0;
             btnHeaderAction.Click += (s, e) => Close();
-            header.Controls.Add(lblTitle);
+
+            header.Controls.Add(appTitle);
+            header.Controls.Add(btnThemeToggle);
             header.Controls.Add(lblCurrentUser);
             header.Controls.Add(btnHeaderAction);
+
             void LayoutHeaderRight()
             {
-                btnHeaderAction.Left = header.ClientSize.Width - btnHeaderAction.Width - 20;
-                lblCurrentUser.Left = btnHeaderAction.Left - lblCurrentUser.Width - 18;
+                btnHeaderAction.Left = header.ClientSize.Width - btnHeaderAction.Width - 24;
+                lblCurrentUser.Left = btnHeaderAction.Left - lblCurrentUser.Width - 22;
+                btnThemeToggle.Left = lblCurrentUser.Left - btnThemeToggle.Width - 18;
             }
             header.Resize += (s, e) => LayoutHeaderRight();
 
-            var container = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20) };
+            sidebar = new Panel
+            {
+                Width = 170,
+                Dock = DockStyle.Left,
+                BackColor = ColorTranslator.FromHtml("#1E3A8A"),
+                Padding = new Padding(0, 35, 0, 0)
+            };
+            var btnProfil = CreateSidebarButton("Profil", false);
+            var btnAdmin = CreateSidebarButton("Administrare", true);
+            var btnDashboard = CreateSidebarButton("Dashboard", false);
+            btnProfil.Click += (s, e) => { if (_currentUser != null) new ProfilForm(_currentUser).ShowDialog(); };
+            sidebar.Controls.Add(btnProfil);
+            sidebar.Controls.Add(btnAdmin);
+            sidebar.Controls.Add(btnDashboard);
 
-            tabControl = new TabControl { Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10) };
-            var tabUsers = new TabPage("Utilizatori") { Padding = new Padding(10) };
-            var tabSettings = new TabPage("Setări Sistem") { Padding = new Padding(10) };
-            var tabLogs = new TabPage("Log-uri") { Padding = new Padding(10) };
-            var tabBackup = new TabPage("Backup") { Padding = new Padding(10) };
+            mainPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(28, 32, 28, 28),
+                BackColor = ColorTranslator.FromHtml("#F3F4F6")
+            };
+            pageTitle = new Label
+            {
+                Text = "Administrare",
+                Dock = DockStyle.Top,
+                Height = 58,
+                Font = new Font("Segoe UI", 20, FontStyle.Bold),
+                ForeColor = ColorTranslator.FromHtml("#30323A"),
+                BackColor = Color.Transparent
+            };
 
-            var topPanel = new Panel { Height = 56, Dock = DockStyle.Top, BackColor = Color.Transparent };
-
-            var searchContainer = new Panel { Left = 0, Top = 10, Width = 420, Height = 36, BackColor = Color.White };
-            searchContainer.Paint += (s, e) => {
+            cardPanel = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Padding = new Padding(8) };
+            cardPanel.Paint += (s, e) =>
+            {
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                using var pb = new Pen(ColorTranslator.FromHtml("#E5E7EB"), 1.5f) { LineJoin = LineJoin.Round };
+                var rect = new Rectangle(0, 0, cardPanel.Width - 1, cardPanel.Height - 1);
+                using var border = new Pen(ColorTranslator.FromHtml("#E5E7EB"), 1);
+                e.Graphics.DrawPath(border, GetRoundedPath(rect, 10));
+                cardPanel.Region = new Region(GetRoundedPath(rect, 10));
+            };
+
+            tabControl = new TabControl
+            {
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                DrawMode = TabDrawMode.OwnerDrawFixed,
+                ItemSize = new Size(140, 48),
+                SizeMode = TabSizeMode.Fixed
+            };
+            tabControl.DrawItem += TabControl_DrawItem;
+
+            var tabUsers = new TabPage("Utilizatori") { Padding = new Padding(2, 12, 2, 2), BackColor = Color.White };
+            var tabSettings = new TabPage("Setari Sistem") { Padding = new Padding(10), BackColor = Color.White };
+            var tabLogs = new TabPage("Log-uri") { Padding = new Padding(10), BackColor = Color.White };
+            var tabBackup = new TabPage("Backup") { Padding = new Padding(10), BackColor = Color.White };
+
+            var topPanel = new Panel { Height = 58, Dock = DockStyle.Top, BackColor = Color.White };
+
+            var searchContainer = new Panel { Left = 0, Top = 8, Width = 390, Height = 40, BackColor = Color.White };
+            searchContainer.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using var pb = new Pen(ColorTranslator.FromHtml("#CBD5E1"), 1.5f) { LineJoin = LineJoin.Round };
                 var r = new Rectangle(0, 0, searchContainer.Width - 1, searchContainer.Height - 1);
                 e.Graphics.DrawPath(pb, GetRoundedPath(r, 8));
                 searchContainer.Region = new Region(GetRoundedPath(new Rectangle(0, 0, searchContainer.Width, searchContainer.Height), 8));
             };
 
-            txtSearch = new TextBox { PlaceholderText = "Caută utilizator...", Left = 10, Top = 6, Width = searchContainer.Width - 20, BorderStyle = BorderStyle.None };
-            txtSearch.Font = new Font("Segoe UI", 9);
+            txtSearch = new TextBox
+            {
+                PlaceholderText = "Cauta utilizator...",
+                Left = 14,
+                Top = 9,
+                Width = searchContainer.Width - 28,
+                BorderStyle = BorderStyle.None,
+                Font = new Font("Segoe UI", 10)
+            };
             txtSearch.TextChanged += (s, e) => ApplyFilter();
             searchContainer.Controls.Add(txtSearch);
 
-            btnAdd = new Button { Text = "+ Adaugă Utilizator", Width = 160, Height = 36, Anchor = AnchorStyles.Top | AnchorStyles.Right, FlatStyle = FlatStyle.Flat, BackColor = ColorTranslator.FromHtml("#2563EB"), ForeColor = Color.White };
+            btnAdd = new Button
+            {
+                Text = "+  Adauga Utilizator",
+                Width = 190,
+                Height = 40,
+                Top = 8,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = ColorTranslator.FromHtml("#2563EB"),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
             btnAdd.FlatAppearance.BorderSize = 0;
             btnAdd.Region = new Region(GetRoundedPath(new Rectangle(0, 0, btnAdd.Width, btnAdd.Height), 10));
             btnAdd.Click += BtnAdd_Click;
@@ -102,20 +215,30 @@ namespace AirportManagement.Views
             topPanel.Controls.Add(searchContainer);
             topPanel.Controls.Add(btnAdd);
 
-            dgv = new DataGridView { Dock = DockStyle.Fill, ReadOnly = true, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill, SelectionMode = DataGridViewSelectionMode.FullRowSelect, AllowUserToAddRows = false, BackgroundColor = Color.White, BorderStyle = BorderStyle.None };
+            dgv = new DataGridView
+            {
+                Dock = DockStyle.Fill,
+                ReadOnly = true,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                AllowUserToAddRows = false,
+                BackgroundColor = Color.White,
+                BorderStyle = BorderStyle.None
+            };
             dgv.EnableHeadersVisualStyles = false;
-            dgv.ColumnHeadersDefaultCellStyle.BackColor = Color.White;
-            dgv.ColumnHeadersDefaultCellStyle.SelectionBackColor = Color.White;
-            dgv.ColumnHeadersDefaultCellStyle.ForeColor = ColorTranslator.FromHtml("#111827");
+            dgv.ColumnHeadersDefaultCellStyle.BackColor = ColorTranslator.FromHtml("#F8FAFC");
+            dgv.ColumnHeadersDefaultCellStyle.SelectionBackColor = ColorTranslator.FromHtml("#F8FAFC");
+            dgv.ColumnHeadersDefaultCellStyle.ForeColor = Color.Black;
             dgv.ColumnHeadersDefaultCellStyle.SelectionForeColor = dgv.ColumnHeadersDefaultCellStyle.ForeColor;
             dgv.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 10, FontStyle.Bold);
-            dgv.ColumnHeadersHeight = 48;
-            dgv.RowTemplate.Height = 44;
-            dgv.RowTemplate.DefaultCellStyle.Padding = new Padding(8, 6, 8, 6);
+            dgv.ColumnHeadersHeight = 54;
+            dgv.RowTemplate.Height = 58;
+            dgv.RowTemplate.DefaultCellStyle.Padding = new Padding(12, 6, 12, 6);
+            dgv.DefaultCellStyle.Font = new Font("Segoe UI", 11, FontStyle.Bold);
             dgv.AlternatingRowsDefaultCellStyle.BackColor = ColorTranslator.FromHtml("#F8FAFC");
             dgv.DefaultCellStyle.SelectionBackColor = ColorTranslator.FromHtml("#2563EB");
             dgv.DefaultCellStyle.SelectionForeColor = Color.White;
-            dgv.GridColor = ColorTranslator.FromHtml("#E6E9EE");
+            dgv.GridColor = Color.White;
             dgv.RowHeadersVisible = false;
             dgv.AllowUserToResizeRows = false;
             dgv.CellFormatting += Dgv_CellFormatting;
@@ -124,28 +247,186 @@ namespace AirportManagement.Views
             tabUsers.Controls.Add(dgv);
             tabUsers.Controls.Add(topPanel);
 
-            tabSettings.Controls.Add(new Label { Text = "Setări sistem (în lucru)", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter });
-            tabLogs.Controls.Add(new Label { Text = "Log-uri (în lucru)", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter });
-            tabBackup.Controls.Add(new Label { Text = "Backup (în lucru)", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter });
-
+            tabSettings.Controls.Add(new Label { Text = "Setari sistem (in lucru)", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter });
+            tabLogs.Controls.Add(new Label { Text = "Log-uri (in lucru)", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter });
+            tabBackup.Controls.Add(new Label { Text = "Backup (in lucru)", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter });
             tabControl.TabPages.AddRange(new TabPage[] { tabUsers, tabSettings, tabLogs, tabBackup });
 
-            container.Controls.Add(tabControl);
+            cardPanel.Controls.Add(tabControl);
+            mainPanel.Controls.Add(cardPanel);
+            mainPanel.Controls.Add(pageTitle);
 
-            Controls.Add(container);
+            Controls.Add(mainPanel);
+            Controls.Add(sidebar);
             Controls.Add(header);
-            LayoutHeaderRight();
 
-            tabControl.Resize += (s, e) => { btnAdd.Left = tabUsers.ClientSize.Width - btnAdd.Width - 10; };
+            header.Dock = DockStyle.None;
+            sidebar.Dock = DockStyle.None;
+            mainPanel.Dock = DockStyle.None;
+
+            void LayoutShell()
+            {
+                header.SetBounds(0, 0, ClientSize.Width, 64);
+                sidebar.SetBounds(0, header.Bottom, 170, Math.Max(0, ClientSize.Height - header.Height));
+                mainPanel.SetBounds(sidebar.Right, header.Bottom, Math.Max(0, ClientSize.Width - sidebar.Width), Math.Max(0, ClientSize.Height - header.Height));
+                LayoutHeaderRight();
+                mainPanel.PerformLayout();
+                cardPanel.Invalidate();
+            }
+            Resize += (s, e) => LayoutShell();
+            LayoutShell();
+
+            tabControl.Resize += (s, e) => PositionAddButton(tabUsers);
+            tabUsers.Resize += (s, e) => PositionAddButton(tabUsers);
+            PositionAddButton(tabUsers);
+            ApplyTheme();
+        }
+
+        private Button CreateSidebarButton(string text, bool active)
+        {
+            var btn = new Button
+            {
+                Text = text,
+                Dock = DockStyle.Top,
+                Height = 54,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(24, 0, 0, 0),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = active ? ColorTranslator.FromHtml("#2563EB") : ColorTranslator.FromHtml("#1E3A8A"),
+                ForeColor = Color.White,
+                Cursor = Cursors.Hand,
+                Font = new Font("Segoe UI", 11, FontStyle.Bold)
+            };
+            btn.FlatAppearance.BorderSize = 0;
+            btn.FlatAppearance.MouseOverBackColor = ColorTranslator.FromHtml("#2563EB");
+            return btn;
+        }
+
+        private void PositionAddButton(TabPage tabUsers)
+        {
+            if (btnAdd == null) return;
+            btnAdd.Left = Math.Max(0, tabUsers.ClientSize.Width - btnAdd.Width - 6);
+        }
+
+        private void TabControl_DrawItem(object? sender, DrawItemEventArgs e)
+        {
+            var tab = tabControl.TabPages[e.Index];
+            var selected = e.Index == tabControl.SelectedIndex;
+            var bounds = e.Bounds;
+
+            using var bg = new SolidBrush(_darkMode ? ColorTranslator.FromHtml("#111827") : Color.White);
+            e.Graphics.FillRectangle(bg, bounds);
+
+            var color = selected ? ColorTranslator.FromHtml("#60A5FA") : (_darkMode ? ColorTranslator.FromHtml("#CBD5E1") : ColorTranslator.FromHtml("#6B7280"));
+            TextRenderer.DrawText(e.Graphics, tab.Text, tabControl.Font, bounds, color, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
+            if (selected)
+            {
+                using var line = new Pen(ColorTranslator.FromHtml("#60A5FA"), 3);
+                e.Graphics.DrawLine(line, bounds.Left + 8, bounds.Bottom - 2, bounds.Right - 8, bounds.Bottom - 2);
+            }
+        }
+
+        private void ApplyTheme()
+        {
+            var pageBack = _darkMode ? ColorTranslator.FromHtml("#0F172A") : ColorTranslator.FromHtml("#F3F4F6");
+            var cardBack = _darkMode ? ColorTranslator.FromHtml("#111827") : Color.White;
+            var headerBack = _darkMode ? ColorTranslator.FromHtml("#0B1220") : ColorTranslator.FromHtml("#1E3A8A");
+            var sidebarBack = _darkMode ? ColorTranslator.FromHtml("#111827") : ColorTranslator.FromHtml("#1E3A8A");
+            var text = _darkMode ? ColorTranslator.FromHtml("#F8FAFC") : ColorTranslator.FromHtml("#111827");
+            var muted = _darkMode ? ColorTranslator.FromHtml("#CBD5E1") : ColorTranslator.FromHtml("#30323A");
+            var tableAlt = _darkMode ? ColorTranslator.FromHtml("#1F2937") : ColorTranslator.FromHtml("#F8FAFC");
+            var tableHeader = _darkMode ? ColorTranslator.FromHtml("#1F2937") : ColorTranslator.FromHtml("#F8FAFC");
+
+            BackColor = pageBack;
+            header.BackColor = headerBack;
+            sidebar.BackColor = sidebarBack;
+            mainPanel.BackColor = pageBack;
+            cardPanel.BackColor = cardBack;
+            pageTitle.ForeColor = muted;
+            btnThemeToggle.Text = _darkMode ? "Light" : "Dark";
+            btnThemeToggle.BackColor = _darkMode ? ColorTranslator.FromHtml("#F59E0B") : ColorTranslator.FromHtml("#2563EB");
+
+            ApplyThemeToControls(cardPanel, cardBack, text);
+            ApplyThemeToControls(mainPanel, pageBack, text);
+
+            foreach (Control c in sidebar.Controls)
+            {
+                if (c is Button b)
+                {
+                    var active = b.Text == "Administrare";
+                    b.BackColor = active ? ColorTranslator.FromHtml("#2563EB") : sidebarBack;
+                    b.ForeColor = Color.White;
+                    b.FlatAppearance.MouseOverBackColor = ColorTranslator.FromHtml("#2563EB");
+                }
+            }
+
+            if (dgv != null)
+            {
+                dgv.BackgroundColor = cardBack;
+                dgv.DefaultCellStyle.BackColor = cardBack;
+                dgv.DefaultCellStyle.ForeColor = text;
+                dgv.AlternatingRowsDefaultCellStyle.BackColor = tableAlt;
+                dgv.AlternatingRowsDefaultCellStyle.ForeColor = text;
+                dgv.ColumnHeadersDefaultCellStyle.BackColor = tableHeader;
+                dgv.ColumnHeadersDefaultCellStyle.SelectionBackColor = tableHeader;
+                dgv.ColumnHeadersDefaultCellStyle.ForeColor = text;
+                dgv.GridColor = _darkMode ? ColorTranslator.FromHtml("#111827") : Color.White;
+
+                foreach (DataGridViewColumn c in dgv.Columns)
+                {
+                    c.HeaderCell.Style.BackColor = tableHeader;
+                    c.HeaderCell.Style.SelectionBackColor = tableHeader;
+                    c.HeaderCell.Style.ForeColor = text;
+                    c.HeaderCell.Style.SelectionForeColor = text;
+                }
+            }
+
+            tabControl.Invalidate();
+            cardPanel.Invalidate();
+        }
+
+        private void ApplyThemeToControls(Control parent, Color back, Color text)
+        {
+            foreach (Control c in parent.Controls)
+            {
+                if (c is TabPage || c is Panel)
+                {
+                    c.BackColor = back;
+                }
+                else if (c is Label label)
+                {
+                    label.ForeColor = text;
+                    label.BackColor = Color.Transparent;
+                }
+                else if (c is TextBox tb)
+                {
+                    tb.BackColor = back;
+                    tb.ForeColor = text;
+                }
+
+                if (c.HasChildren)
+                {
+                    ApplyThemeToControls(c, back, text);
+                }
+            }
         }
 
         public void SetEmbedded(bool embedded)
         {
-            if (header != null)
+            if (header != null) header.Visible = !embedded;
+            if (sidebar != null) sidebar.Visible = !embedded;
+            if (pageTitle != null) pageTitle.Visible = !embedded;
+            if (mainPanel != null)
             {
-                header.Visible = !embedded;
+                mainPanel.Padding = embedded ? new Padding(0) : new Padding(28, 32, 28, 28);
+                mainPanel.BackColor = embedded ? Color.White : ColorTranslator.FromHtml("#F3F4F6");
             }
-            BackColor = embedded ? Color.White : ColorTranslator.FromHtml("#F8F9FA");
+            if (cardPanel != null)
+            {
+                cardPanel.Padding = embedded ? new Padding(4) : new Padding(8);
+            }
+            BackColor = embedded ? Color.White : ColorTranslator.FromHtml("#F3F4F6");
         }
 
         private void LoadData()
@@ -153,6 +434,7 @@ namespace AirportManagement.Views
             _dt = _controller.GetAll();
             BuildGrid();
             dgv.DataSource = _dt;
+            ApplyTheme();
         }
 
         private void BuildGrid()
@@ -161,14 +443,14 @@ namespace AirportManagement.Views
             dgv.AutoGenerateColumns = false;
 
             dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "id", HeaderText = "ID", DataPropertyName = "id", Visible = false });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "nume", HeaderText = "Nume", DataPropertyName = "nume" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "username", HeaderText = "Username", DataPropertyName = "username" });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "rol", HeaderText = "Rol", DataPropertyName = "rol", Width = 120 });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "activ", HeaderText = "Activ", DataPropertyName = "activ", Width = 80 });
-            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "ultima_logare", HeaderText = "Ultima Logare", DataPropertyName = "ultima_logare", Width = 160 });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "nume", HeaderText = "Nume", DataPropertyName = "nume", FillWeight = 18 });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "username", HeaderText = "Username", DataPropertyName = "username", FillWeight = 18 });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "rol", HeaderText = "Rol", DataPropertyName = "rol", FillWeight = 14 });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "activ", HeaderText = "Activ", DataPropertyName = "activ", FillWeight = 12 });
+            dgv.Columns.Add(new DataGridViewTextBoxColumn { Name = "ultima_logare", HeaderText = "Ultima Logare", DataPropertyName = "ultima_logare", FillWeight = 20 });
 
-            var editCol = new DataGridViewButtonColumn { Name = "edit", HeaderText = "Acțiuni", Text = "Editează", UseColumnTextForButtonValue = true, Width = 90 };
-            var delCol = new DataGridViewButtonColumn { Name = "delete", HeaderText = "", Text = "Șterge", UseColumnTextForButtonValue = true, Width = 90 };
+            var editCol = new DataGridViewButtonColumn { Name = "edit", HeaderText = "Actiuni", Text = "Editeaza", UseColumnTextForButtonValue = true, FillWeight = 9 };
+            var delCol = new DataGridViewButtonColumn { Name = "delete", HeaderText = "", Text = "Sterge", UseColumnTextForButtonValue = true, FillWeight = 9 };
 
             editCol.FlatStyle = FlatStyle.Flat;
             editCol.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
@@ -183,7 +465,6 @@ namespace AirportManagement.Views
             dgv.Columns.Add(editCol);
             dgv.Columns.Add(delCol);
 
-            // Ensure every column header uses the configured header style (keep headers white)
             foreach (DataGridViewColumn c in dgv.Columns)
             {
                 c.HeaderCell.Style.BackColor = dgv.ColumnHeadersDefaultCellStyle.BackColor;
@@ -192,27 +473,6 @@ namespace AirportManagement.Views
                 c.HeaderCell.Style.SelectionBackColor = dgv.ColumnHeadersDefaultCellStyle.SelectionBackColor;
                 c.HeaderCell.Style.SelectionForeColor = dgv.ColumnHeadersDefaultCellStyle.SelectionForeColor;
             }
-
-            // Ensure the ID column header uses the same header background (white-like)
-            if (dgv.Columns.Contains("id"))
-            {
-                dgv.Columns["id"].HeaderCell.Style.BackColor = dgv.ColumnHeadersDefaultCellStyle.BackColor;
-                dgv.Columns["id"].HeaderCell.Style.ForeColor = dgv.ColumnHeadersDefaultCellStyle.ForeColor;
-                dgv.Columns["id"].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            }
-        }
-
-        private Utilizator? GetSelected()
-        {
-            if (dgv.CurrentRow == null) return null;
-            var row = dgv.CurrentRow;
-            return new Utilizator
-            {
-                Id = Convert.ToInt32(row.Cells["id"].Value),
-                Nume = row.Cells["nume"].Value?.ToString() ?? string.Empty,
-                Username = row.Cells["username"].Value?.ToString() ?? string.Empty,
-                Rol = row.Cells["rol"].Value?.ToString() ?? string.Empty
-            };
         }
 
         private void BtnAdd_Click(object? sender, EventArgs e)
@@ -246,8 +506,8 @@ namespace AirportManagement.Views
             else if (col.Name == "delete")
             {
                 var id = Convert.ToInt32(dgv.Rows[e.RowIndex].Cells["id"].Value);
-                var nume = dgv.Rows[e.RowIndex].Cells["nume"].Value?.ToString() ?? "";
-                if (MessageBox.Show($"Ștergi utilizatorul '{nume}'?", "Confirmare", MessageBoxButtons.YesNo) == DialogResult.Yes)
+                var nume = dgv.Rows[e.RowIndex].Cells["nume"].Value?.ToString() ?? string.Empty;
+                if (MessageBox.Show($"Stergi utilizatorul '{nume}'?", "Confirmare", MessageBoxButtons.YesNo) == DialogResult.Yes)
                 {
                     _controller.Delete(id);
                     LoadData();
@@ -270,15 +530,17 @@ namespace AirportManagement.Views
             if (dgv.Columns[e.ColumnIndex].Name == "rol")
             {
                 if (e.Value == null || e.Value == DBNull.Value) return;
-                var r = e.Value.ToString() ?? string.Empty;
-                var rl = r.ToLower();
-                if (rl.Contains("admin"))
+                var role = e.Value.ToString() ?? string.Empty;
+                var normalized = role.ToLower();
+                if (normalized.Contains("admin"))
                 {
+                    e.Value = "Admin";
                     e.CellStyle.BackColor = ColorTranslator.FromHtml("#EF4444");
                     e.CellStyle.ForeColor = Color.White;
                 }
-                else if (rl.Contains("operator"))
+                else if (normalized.Contains("operator"))
                 {
+                    e.Value = "Operator";
                     e.CellStyle.BackColor = ColorTranslator.FromHtml("#2563EB");
                     e.CellStyle.ForeColor = Color.White;
                 }
@@ -292,14 +554,14 @@ namespace AirportManagement.Views
 
             if (dgv.Columns[e.ColumnIndex].Name == "edit")
             {
-                e.CellStyle.BackColor = Color.White;
+                e.CellStyle.BackColor = _darkMode ? ColorTranslator.FromHtml("#111827") : Color.White;
                 e.CellStyle.ForeColor = ColorTranslator.FromHtml("#2563EB");
                 e.CellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             }
 
             if (dgv.Columns[e.ColumnIndex].Name == "delete")
             {
-                e.CellStyle.BackColor = Color.White;
+                e.CellStyle.BackColor = _darkMode ? ColorTranslator.FromHtml("#111827") : Color.White;
                 e.CellStyle.ForeColor = ColorTranslator.FromHtml("#DC2626");
                 e.CellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             }
@@ -319,13 +581,20 @@ namespace AirportManagement.Views
             if (_dt == null) return;
             try
             {
-                var txt = txtSearch.Text.Trim().Replace("'","''");
-                if (string.IsNullOrEmpty(txt)) _dt.DefaultView.RowFilter = string.Empty;
-                else _dt.DefaultView.RowFilter = $"nume LIKE '%{txt}%' OR username LIKE '%{txt}%'";
+                var txt = txtSearch.Text.Trim().Replace("'", "''");
+                _dt.DefaultView.RowFilter = string.IsNullOrEmpty(txt)
+                    ? string.Empty
+                    : $"nume LIKE '%{txt}%' OR username LIKE '%{txt}%'";
             }
             catch
             {
             }
+        }
+
+        private string FormatRole(string role)
+        {
+            if (string.IsNullOrWhiteSpace(role)) return "Admin";
+            return char.ToUpper(role[0]) + role.Substring(1);
         }
 
         private GraphicsPath GetRoundedPath(Rectangle r, int radius)
