@@ -122,13 +122,8 @@ namespace AirportManagement.Views
                 BackColor = ColorTranslator.FromHtml("#1E3A8A"),
                 Padding = new Padding(0, 35, 0, 0)
             };
-            var btnProfil = CreateSidebarButton("Profil", false);
             var btnAdmin = CreateSidebarButton("Administrare", true);
-            var btnDashboard = CreateSidebarButton("Dashboard", false);
-            btnProfil.Click += (s, e) => { if (_currentUser != null) new ProfilForm(_currentUser).ShowDialog(); };
-            sidebar.Controls.Add(btnProfil);
             sidebar.Controls.Add(btnAdmin);
-            sidebar.Controls.Add(btnDashboard);
 
             mainPanel = new Panel
             {
