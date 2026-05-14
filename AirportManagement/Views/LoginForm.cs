@@ -221,7 +221,7 @@ namespace AirportManagement.Views
             var role = (user.Rol ?? string.Empty).ToLower();
             if (role.Contains("admin"))
             {
-                var adminForm = new AdminForm();
+                var adminForm = new AdminForm(user);
                 adminForm.FormClosed += (s, e) => this.Show();
                 adminForm.Show();
             }

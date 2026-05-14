@@ -14,11 +14,15 @@ namespace AirportManagement.Views
         private System.Data.DataTable _dt;
         private TextBox txtSearch;
         private Button btnAdd;
+        private Button btnHeaderAction;
+        private Label lblCurrentUser;
         private TabControl tabControl;
         private Panel header;
+        private Utilizator? _currentUser;
 
-        public AdminForm()
+        public AdminForm(Utilizator? currentUser = null)
         {
+            _currentUser = currentUser;
             InitializeComponent();
             LoadData();
         }
@@ -28,9 +32,43 @@ namespace AirportManagement.Views
             Text = "Administrare"; Width = 1000; Height = 680; StartPosition = FormStartPosition.CenterParent; Font = new Font("Segoe UI", 9);
             BackColor = ColorTranslator.FromHtml("#F8F9FA");
 
-            header = new Panel { Height = 70, Dock = DockStyle.Top, BackColor = Color.White };
-            var lblTitle = new Label { Text = "Administrare", Left = 20, Top = 18, AutoSize = true, Font = new Font("Segoe UI", 16, FontStyle.Bold) };
+            header = new Panel { Height = 70, Dock = DockStyle.Top, BackColor = ColorTranslator.FromHtml("#2563EB") };
+            var lblTitle = new Label { Text = "Administrare", Left = 20, Top = 18, AutoSize = true, Font = new Font("Segoe UI", 16, FontStyle.Bold), ForeColor = Color.White, BackColor = Color.Transparent };
+            var userName = string.IsNullOrWhiteSpace(_currentUser?.Nume) ? _currentUser?.Username ?? "Admin" : _currentUser.Nume;
+            var userRole = string.IsNullOrWhiteSpace(_currentUser?.Rol) ? "Admin" : char.ToUpper(_currentUser.Rol[0]) + _currentUser.Rol.Substring(1);
+            lblCurrentUser = new Label
+            {
+                Text = $"{userName} | {userRole}",
+                AutoSize = true,
+                Top = 24,
+                ForeColor = Color.White,
+                BackColor = Color.Transparent,
+                Font = new Font("Segoe UI", 10, FontStyle.Bold)
+            };
+            btnHeaderAction = new Button
+            {
+                Text = "Deconectare",
+                Width = 130,
+                Height = 34,
+                Left = 0,
+                Top = 18,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                BackColor = ColorTranslator.FromHtml("#DC2626"),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand
+            };
+            btnHeaderAction.FlatAppearance.BorderSize = 0;
+            btnHeaderAction.Click += (s, e) => Close();
             header.Controls.Add(lblTitle);
+            header.Controls.Add(lblCurrentUser);
+            header.Controls.Add(btnHeaderAction);
+            void LayoutHeaderRight()
+            {
+                btnHeaderAction.Left = header.ClientSize.Width - btnHeaderAction.Width - 20;
+                lblCurrentUser.Left = btnHeaderAction.Left - lblCurrentUser.Width - 18;
+            }
+            header.Resize += (s, e) => LayoutHeaderRight();
 
             var container = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20) };
 
@@ -96,6 +134,7 @@ namespace AirportManagement.Views
 
             Controls.Add(container);
             Controls.Add(header);
+            LayoutHeaderRight();
 
             tabControl.Resize += (s, e) => { btnAdd.Left = tabUsers.ClientSize.Width - btnAdd.Width - 10; };
         }

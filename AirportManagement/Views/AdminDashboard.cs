@@ -71,7 +71,7 @@ namespace AirportManagement.Views
             card.Controls.Add(contentHost);
 
             // Embed AdminForm into the content host so its tabs and table appear inside the card
-            _adminForm = new AdminForm();
+            _adminForm = new AdminForm(_user);
             _adminForm.TopLevel = false;
             _adminForm.FormBorderStyle = FormBorderStyle.None;
             _adminForm.Dock = DockStyle.Fill;
