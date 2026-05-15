@@ -28,6 +28,8 @@ namespace AirportManagement.Views
         private Label lblPassengersValue = null!;
         private Label lblDelaysValue = null!;
         private Label lblGatesValue = null!;
+        private Button btnThemeToggle = null!;
+        private bool _darkMode;
 
         public OperatorDashboard(Utilizator user)
         {
@@ -95,8 +97,29 @@ namespace AirportManagement.Views
             btnLogout.FlatAppearance.BorderSize = 0;
             btnLogout.Paint += (s, e) => DrawLogoutIcon(e.Graphics, new Rectangle(4, 7, 14, 14), Color.White);
             btnLogout.Click += (s, e) => Close();
+            lblUser.Top = btnLogout.Top + (btnLogout.Height - lblUser.Height) / 2;
+
+            btnThemeToggle = new Button
+            {
+                Text = "Dark",
+                Width = 58,
+                Height = 26,
+                Top = 8,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = ColorTranslator.FromHtml("#2D6CEE"),
+                ForeColor = Color.White,
+                Cursor = Cursors.Hand,
+                Font = new Font("Segoe UI", 8, FontStyle.Bold)
+            };
+            btnThemeToggle.FlatAppearance.BorderSize = 0;
+            btnThemeToggle.Click += (s, e) =>
+            {
+                _darkMode = !_darkMode;
+                ApplyTheme();
+            };
 
             header.Controls.Add(lblUser);
+            header.Controls.Add(btnThemeToggle);
             header.Controls.Add(btnLogout);
 
             sidebar = new Panel
@@ -108,12 +131,9 @@ namespace AirportManagement.Views
             var navTop = 12;
             sidebar.Controls.Add(CreateSidebarButton("Dashboard", navTop, true, DrawGridIcon));
             sidebar.Controls.Add(CreateSidebarButton("Zboruri", navTop + 36, false, DrawPlaneIcon));
-            sidebar.Controls.Add(CreateSidebarButton("Resurse", navTop + 72, false, DrawMapIcon));
-            sidebar.Controls.Add(CreateSidebarButton("Pasageri", navTop + 108, false, DrawUsersIcon));
-            sidebar.Controls.Add(CreateSidebarButton("Alerte", navTop + 144, false, DrawBellIcon));
-            sidebar.Controls.Add(CreateSidebarButton("Rapoarte", navTop + 180, false, DrawChartIcon));
-            sidebar.Controls.Add(CreateSidebarButton("Profil", navTop + 216, false, DrawUserIcon));
-            sidebar.Controls.Add(CreateSidebarButton("Administrare", navTop + 252, false, DrawShieldIcon));
+            sidebar.Controls.Add(CreateSidebarButton("Pasageri", navTop + 72, false, DrawUsersIcon));
+            sidebar.Controls.Add(CreateSidebarButton("Alerte", navTop + 108, false, DrawBellIcon));
+            sidebar.Controls.Add(CreateSidebarButton("Administrare", navTop + 144, false, DrawShieldIcon));
 
             mainPanel = new Panel
             {
@@ -238,8 +258,11 @@ namespace AirportManagement.Views
             {
                 btnLogout.Left = header.ClientSize.Width - btnLogout.Width - 16;
                 lblUser.Left = btnLogout.Left - lblUser.Width - 8;
+                lblUser.Top = btnLogout.Top + (btnLogout.Height - lblUser.Height) / 2;
+                btnThemeToggle.Left = lblUser.Left - btnThemeToggle.Width - 12;
             };
             LayoutDashboard();
+            ApplyTheme();
 
             WireNavigation();
         }
@@ -270,6 +293,101 @@ namespace AirportManagement.Views
             foreach (Control c in statsPanel.Controls) c.Invalidate();
             flightsCard.Invalidate();
             alertsCard.Invalidate();
+        }
+
+        private void ApplyTheme()
+        {
+            var pageBack = _darkMode ? ColorTranslator.FromHtml("#111827") : ColorTranslator.FromHtml("#F4F6F8");
+            var headerBack = _darkMode ? ColorTranslator.FromHtml("#0F172A") : ColorTranslator.FromHtml("#1F416C");
+            var sidebarBack = _darkMode ? ColorTranslator.FromHtml("#0F172A") : ColorTranslator.FromHtml("#1F416C");
+            var cardBack = _darkMode ? ColorTranslator.FromHtml("#1F2937") : Color.White;
+            var cardBorder = _darkMode ? ColorTranslator.FromHtml("#374151") : ColorTranslator.FromHtml("#E7EAF0");
+            var text = _darkMode ? ColorTranslator.FromHtml("#F9FAFB") : Color.Black;
+            var mutedText = _darkMode ? ColorTranslator.FromHtml("#CBD5E1") : ColorTranslator.FromHtml("#697386");
+            var tableHeader = _darkMode ? ColorTranslator.FromHtml("#374151") : ColorTranslator.FromHtml("#F2F4F7");
+            var tableAlt = _darkMode ? ColorTranslator.FromHtml("#273244") : ColorTranslator.FromHtml("#F8F9FB");
+            var tableSelection = _darkMode ? ColorTranslator.FromHtml("#334155") : ColorTranslator.FromHtml("#EAF1FF");
+            var alertItemBack = _darkMode ? ColorTranslator.FromHtml("#273244") : ColorTranslator.FromHtml("#F6F7F9");
+
+            BackColor = pageBack;
+            header.BackColor = headerBack;
+            sidebar.BackColor = sidebarBack;
+            mainPanel.BackColor = pageBack;
+            statsPanel.BackColor = Color.Transparent;
+            contentPanel.BackColor = Color.Transparent;
+
+            btnThemeToggle.Text = _darkMode ? "Light" : "Dark";
+            btnThemeToggle.BackColor = _darkMode ? ColorTranslator.FromHtml("#F59E0B") : ColorTranslator.FromHtml("#2D6CEE");
+
+            foreach (Control control in sidebar.Controls)
+            {
+                if (control is Button btn)
+                {
+                    var active = string.Equals(btn.Tag?.ToString(), "Dashboard", StringComparison.OrdinalIgnoreCase);
+                    btn.BackColor = active ? ColorTranslator.FromHtml("#2D6CEE") : sidebarBack;
+                    btn.FlatAppearance.MouseOverBackColor = ColorTranslator.FromHtml("#2D6CEE");
+                }
+            }
+
+            ApplyThemeToControls(statsPanel, cardBack, text, mutedText, cardBorder);
+            ApplyThemeToControls(flightsCard, cardBack, text, mutedText, cardBorder);
+            ApplyThemeToControls(alertsCard, cardBack, text, mutedText, cardBorder);
+
+            dgvFlights.BackgroundColor = cardBack;
+            dgvFlights.GridColor = cardBack;
+            dgvFlights.DefaultCellStyle.BackColor = cardBack;
+            dgvFlights.DefaultCellStyle.ForeColor = text;
+            dgvFlights.DefaultCellStyle.SelectionBackColor = tableSelection;
+            dgvFlights.DefaultCellStyle.SelectionForeColor = text;
+            dgvFlights.AlternatingRowsDefaultCellStyle.BackColor = tableAlt;
+            dgvFlights.ColumnHeadersDefaultCellStyle.BackColor = tableHeader;
+            dgvFlights.ColumnHeadersDefaultCellStyle.ForeColor = text;
+            dgvFlights.ColumnHeadersDefaultCellStyle.SelectionBackColor = tableHeader;
+
+            alertsList.BackColor = cardBack;
+            foreach (Control item in alertsList.Controls)
+            {
+                item.BackColor = alertItemBack;
+                foreach (Control child in item.Controls)
+                {
+                    if (child is Label label)
+                    {
+                        label.ForeColor = label.Top > 20 ? mutedText : text;
+                    }
+                }
+            }
+
+            Invalidate(true);
+        }
+
+        private void ApplyThemeToControls(Control parent, Color back, Color text, Color mutedText, Color border)
+        {
+            if (parent is RoundedPanel roundedPanel)
+            {
+                roundedPanel.BackColor = back;
+                roundedPanel.BorderColor = border;
+            }
+
+            foreach (Control control in parent.Controls)
+            {
+                if (control is RoundedPanel childPanel)
+                {
+                    if (childPanel.Controls.Count > 0)
+                    {
+                        ApplyThemeToControls(childPanel, back, text, mutedText, border);
+                    }
+                }
+                else if (control is Label label)
+                {
+                    var isValueLabel = label == lblFlightsValue || label == lblPassengersValue || label == lblDelaysValue || label == lblGatesValue;
+                    label.ForeColor = label.Font.Bold || isValueLabel ? text : mutedText;
+                    label.BackColor = Color.Transparent;
+                }
+                else if (control is FlowLayoutPanel flow)
+                {
+                    flow.BackColor = back;
+                }
+            }
         }
 
         private RoundedPanel CreateStatCard(string title, string value, Color iconBack, Action<Graphics, Rectangle, Color> drawIcon, out Label valueLabel)

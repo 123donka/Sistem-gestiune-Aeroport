@@ -49,6 +49,9 @@ namespace AirportManagement.Views
             StartPosition = FormStartPosition.CenterScreen;
             Font = new Font("Segoe UI", 9);
             DoubleBuffered = true;
+            ResizeRedraw = true;
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.UserPaint, true);
+            UpdateStyles();
 
             // draw gradient background in Paint
             this.Paint += LoginForm_Paint;
@@ -157,12 +160,12 @@ namespace AirportManagement.Views
             {
                 var centerX = (ClientSize.Width - card.Width) / 2;
                 var top = Math.Max(40, (ClientSize.Height - card.Height) / 2);
-                var shadowOffset = 16;
 
                 // card sits above the background shadow (shadow now drawn in form Paint)
                 card.Left = centerX;
                 card.Top = top;
                 card.BringToFront();
+                Invalidate();
             }
 
             this.Load += (s, e) => CenterCard();
