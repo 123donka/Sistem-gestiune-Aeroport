@@ -15,14 +15,14 @@ namespace AirportManagement.Services
             var nameCol = DbContext.NameColumn("utilizatori");
             var pk = DbContext.PrimaryKeyColumnName("utilizatori");
 
-            // Include last activity from logactivitati (if any) and a simple "activ" flag
+            // Include the last successful login from logactivitati and a simple "activ" flag.
             var sql = $@"
 SELECT u.`{pk}` AS id,
        u.`{nameCol}` AS nume,
        u.username,
        u.rol,
-       (SELECT MAX(data) FROM logactivitati la WHERE la.utilizator = u.username) AS ultima_logare,
-       CASE WHEN (SELECT MAX(data) FROM logactivitati la WHERE la.utilizator = u.username) >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY) THEN 1 ELSE 0 END AS activ
+       (SELECT MAX(data) FROM logactivitati la WHERE la.utilizator = u.username AND LOWER(la.actiune) = 'logare') AS ultima_logare,
+       CASE WHEN (SELECT MAX(data) FROM logactivitati la WHERE la.utilizator = u.username AND LOWER(la.actiune) = 'logare') >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY) THEN 1 ELSE 0 END AS activ
 FROM utilizatori u";
 
             using var cmd = new MySqlCommand(sql, conn);

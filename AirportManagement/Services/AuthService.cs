@@ -1,6 +1,7 @@
 using System;
 using AirportManagement.Data;
 using AirportManagement.Models;
+using AirportManagement.Utils;
 using MySql.Data.MySqlClient;
 
 namespace AirportManagement.Services
@@ -29,6 +30,7 @@ namespace AirportManagement.Services
             };
 
             if (u.Parola != parola) return null;
+            Logger.Log(u.Username, "Logare");
             return u;
         }
 

@@ -96,7 +96,7 @@ namespace AirportManagement.Views
             };
             btnLogout.FlatAppearance.BorderSize = 0;
             btnLogout.Paint += (s, e) => DrawLogoutIcon(e.Graphics, new Rectangle(4, 7, 14, 14), Color.White);
-            btnLogout.Click += (s, e) => Close();
+            btnLogout.Click += (s, e) => LogoutToLogin();
             lblUser.Top = btnLogout.Top + (btnLogout.Height - lblUser.Height) / 2;
 
             btnThemeToggle = new Button
@@ -480,6 +480,24 @@ namespace AirportManagement.Views
                 if (text == "Profil") btn.Click += (s, e) => new ProfilForm(_user).ShowDialog(this);
                 if (text == "Administrare") btn.Click += (s, e) => MessageBox.Show("Sectiunea Administrare este disponibila doar pentru administratori.", "Acces restrictionat");
             }
+        }
+
+        private void LogoutToLogin()
+        {
+            LoginForm? loginForm = null;
+            foreach (Form form in Application.OpenForms)
+            {
+                if (form is LoginForm existingLogin)
+                {
+                    loginForm = existingLogin;
+                    break;
+                }
+            }
+
+            loginForm ??= new LoginForm();
+            loginForm.Show();
+            loginForm.Activate();
+            Close();
         }
 
         private void BuildFlightsGrid()
