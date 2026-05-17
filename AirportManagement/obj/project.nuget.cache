@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "t+xzxaUbZsU=",
+  "dgSpecHash": "6nvGYMkBzRw=",
   "success": true,
   "projectFilePath": "C:\\Users\\Asus\\OneDrive\\Desktop\\practica\\AirportManagement\\AirportManagement.csproj",
   "expectedPackageFiles": [
@@ -22,7 +22,7 @@
       "filePath": "C:\\Users\\Asus\\OneDrive\\Desktop\\practica\\AirportManagement\\AirportManagement.csproj",
       "libraryId": "MySql.Data",
       "targetGraphs": [
-        "net10.0-windows7.0"
+        "net10.0-windows"
       ]
     },
     {
@@ -34,7 +34,7 @@
       "filePath": "C:\\Users\\Asus\\OneDrive\\Desktop\\practica\\AirportManagement\\AirportManagement.csproj",
       "libraryId": "BouncyCastle.Cryptography",
       "targetGraphs": [
-        "net10.0-windows7.0"
+        "net10.0-windows"
       ]
     },
     {
@@ -46,7 +46,7 @@
       "filePath": "C:\\Users\\Asus\\OneDrive\\Desktop\\practica\\AirportManagement\\AirportManagement.csproj",
       "libraryId": "BouncyCastle.Cryptography",
       "targetGraphs": [
-        "net10.0-windows7.0"
+        "net10.0-windows"
       ]
     },
     {
@@ -58,7 +58,7 @@
       "filePath": "C:\\Users\\Asus\\OneDrive\\Desktop\\practica\\AirportManagement\\AirportManagement.csproj",
       "libraryId": "BouncyCastle.Cryptography",
       "targetGraphs": [
-        "net10.0-windows7.0"
+        "net10.0-windows"
       ]
     }
   ]

@@ -5,7 +5,9 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using AirportManagement.Controllers;
+using AirportManagement.Data;
 using AirportManagement.Models;
+using MySql.Data.MySqlClient;
 
 namespace AirportManagement.Views
 {
@@ -14,6 +16,8 @@ namespace AirportManagement.Views
         private readonly Utilizator _user;
         private readonly ZboruriController _zboruriController = new ZboruriController();
         private readonly AlerteController _alerteController = new AlerteController();
+        private readonly PasageriController _pasageriController = new PasageriController();
+        private readonly ResurseController _resurseController = new ResurseController();
 
         private Panel header = null!;
         private Panel sidebar = null!;
@@ -29,6 +33,8 @@ namespace AirportManagement.Views
         private Label lblDelaysValue = null!;
         private Label lblGatesValue = null!;
         private Button btnThemeToggle = null!;
+        private Form? _embeddedForm;
+        private string _activeSection = "Dashboard";
         private bool _darkMode;
 
         public OperatorDashboard(Utilizator user)
@@ -131,9 +137,11 @@ namespace AirportManagement.Views
             var navTop = 12;
             sidebar.Controls.Add(CreateSidebarButton("Dashboard", navTop, true, DrawGridIcon));
             sidebar.Controls.Add(CreateSidebarButton("Zboruri", navTop + 36, false, DrawPlaneIcon));
-            sidebar.Controls.Add(CreateSidebarButton("Pasageri", navTop + 72, false, DrawUsersIcon));
-            sidebar.Controls.Add(CreateSidebarButton("Alerte", navTop + 108, false, DrawBellIcon));
-            sidebar.Controls.Add(CreateSidebarButton("Administrare", navTop + 144, false, DrawShieldIcon));
+            sidebar.Controls.Add(CreateSidebarButton("Resurse", navTop + 72, false, DrawMapIcon));
+            sidebar.Controls.Add(CreateSidebarButton("Pasageri", navTop + 108, false, DrawUsersIcon));
+            sidebar.Controls.Add(CreateSidebarButton("Alerte", navTop + 144, false, DrawBellIcon));
+            sidebar.Controls.Add(CreateSidebarButton("Rapoarte", navTop + 180, false, DrawChartIcon));
+            sidebar.Controls.Add(CreateSidebarButton("Administrare", navTop + 216, false, DrawShieldIcon));
 
             mainPanel = new Panel
             {
@@ -273,6 +281,12 @@ namespace AirportManagement.Views
             sidebar.SetBounds(0, header.Bottom, 152, Math.Max(0, ClientSize.Height - header.Height));
             mainPanel.SetBounds(sidebar.Right, header.Bottom, Math.Max(0, ClientSize.Width - sidebar.Width), Math.Max(0, ClientSize.Height - header.Height));
 
+            if (!string.Equals(_activeSection, "Dashboard", StringComparison.OrdinalIgnoreCase))
+            {
+                header.PerformLayout();
+                return;
+            }
+
             statsPanel.SetBounds(16, 16, Math.Max(0, mainPanel.ClientSize.Width - 32), 78);
             contentPanel.SetBounds(16, 110, Math.Max(0, mainPanel.ClientSize.Width - 32), Math.Max(0, mainPanel.ClientSize.Height - 126));
 
@@ -323,7 +337,7 @@ namespace AirportManagement.Views
             {
                 if (control is Button btn)
                 {
-                    var active = string.Equals(btn.Tag?.ToString(), "Dashboard", StringComparison.OrdinalIgnoreCase);
+                    var active = string.Equals(btn.Tag?.ToString(), _activeSection, StringComparison.OrdinalIgnoreCase);
                     btn.BackColor = active ? ColorTranslator.FromHtml("#2D6CEE") : sidebarBack;
                     btn.FlatAppearance.MouseOverBackColor = ColorTranslator.FromHtml("#2D6CEE");
                 }
@@ -472,14 +486,97 @@ namespace AirportManagement.Views
             {
                 if (control is not Button btn) continue;
                 var text = btn.Tag?.ToString() ?? string.Empty;
-                if (text == "Zboruri") btn.Click += (s, e) => new ZboruriForm().ShowDialog(this);
-                if (text == "Pasageri") btn.Click += (s, e) => new PasageriForm().ShowDialog(this);
-                if (text == "Resurse") btn.Click += (s, e) => new ResurseForm().ShowDialog(this);
-                if (text == "Alerte") btn.Click += (s, e) => new AlerteForm().ShowDialog(this);
-                if (text == "Rapoarte") btn.Click += (s, e) => new RapoarteForm().ShowDialog(this);
-                if (text == "Profil") btn.Click += (s, e) => new ProfilForm(_user).ShowDialog(this);
-                if (text == "Administrare") btn.Click += (s, e) => MessageBox.Show("Sectiunea Administrare este disponibila doar pentru administratori.", "Acces restrictionat");
+                if (text == "Dashboard") btn.Click += (s, e) => ShowDashboard();
+                if (text == "Zboruri") btn.Click += (s, e) => ShowEmbeddedForm("Zboruri", new ZboruriForm());
+                if (text == "Pasageri") btn.Click += (s, e) => ShowEmbeddedForm("Pasageri", new PasageriForm());
+                if (text == "Resurse") btn.Click += (s, e) => ShowEmbeddedForm("Resurse", new ResurseForm());
+                if (text == "Alerte") btn.Click += (s, e) => ShowEmbeddedForm("Alerte", new AlerteForm());
+                if (text == "Rapoarte") btn.Click += (s, e) => ShowEmbeddedForm("Rapoarte", new RapoarteForm());
+                if (text == "Administrare") btn.Click += (s, e) => ShowAccessRestricted();
             }
+        }
+
+        private void ShowDashboard()
+        {
+            _embeddedForm?.Dispose();
+            _embeddedForm = null;
+            _activeSection = "Dashboard";
+
+            mainPanel.Controls.Clear();
+            mainPanel.Padding = new Padding(16);
+            mainPanel.Controls.Add(statsPanel);
+            mainPanel.Controls.Add(contentPanel);
+
+            LoadDashboardData();
+            LayoutDashboard();
+            ApplyTheme();
+        }
+
+        private void ShowEmbeddedForm(string section, Form form)
+        {
+            _embeddedForm?.Dispose();
+            _embeddedForm = form;
+            _activeSection = section;
+
+            mainPanel.Controls.Clear();
+            mainPanel.Padding = new Padding(12);
+
+            form.TopLevel = false;
+            form.FormBorderStyle = FormBorderStyle.None;
+            form.Dock = DockStyle.Fill;
+            form.StartPosition = FormStartPosition.Manual;
+
+            mainPanel.Controls.Add(form);
+            form.Show();
+            ApplyTheme();
+        }
+
+        private void ShowAccessRestricted()
+        {
+            _embeddedForm?.Dispose();
+            _embeddedForm = null;
+            _activeSection = "Administrare";
+
+            mainPanel.Controls.Clear();
+            mainPanel.Padding = new Padding(24);
+
+            var panel = new RoundedPanel
+            {
+                Dock = DockStyle.Top,
+                Height = 118,
+                Radius = 8,
+                BackColor = _darkMode ? ColorTranslator.FromHtml("#1F2937") : Color.White,
+                BorderColor = _darkMode ? ColorTranslator.FromHtml("#374151") : ColorTranslator.FromHtml("#E7EAF0")
+            };
+
+            var title = new Label
+            {
+                Text = "Acces restrictionat",
+                Left = 24,
+                Top = 24,
+                Width = 360,
+                Height = 26,
+                Font = new Font("Segoe UI", 12, FontStyle.Bold),
+                ForeColor = _darkMode ? Color.White : Color.Black,
+                BackColor = Color.Transparent
+            };
+
+            var message = new Label
+            {
+                Text = "Sectiunea Administrare este disponibila doar pentru administratori.",
+                Left = 24,
+                Top = 58,
+                Width = 560,
+                Height = 24,
+                Font = new Font("Segoe UI", 9),
+                ForeColor = _darkMode ? ColorTranslator.FromHtml("#CBD5E1") : ColorTranslator.FromHtml("#697386"),
+                BackColor = Color.Transparent
+            };
+
+            panel.Controls.Add(title);
+            panel.Controls.Add(message);
+            mainPanel.Controls.Add(panel);
+            ApplyTheme();
         }
 
         private void LogoutToLogin()
@@ -519,10 +616,10 @@ namespace AirportManagement.Views
             var flights = LoadFlightsTable();
             dgvFlights.DataSource = flights;
 
-            lblFlightsValue.Text = Math.Max(142, flights.Rows.Count).ToString();
-            lblPassengersValue.Text = "8,432";
+            lblFlightsValue.Text = CountTodayFlights().ToString();
+            lblPassengersValue.Text = CountPassengers().ToString("N0");
             lblDelaysValue.Text = CountStatus(flights, "intarziat").ToString();
-            lblGatesValue.Text = "12/18";
+            lblGatesValue.Text = GetGateAvailabilityText();
 
             LoadAlerts();
         }
@@ -533,39 +630,36 @@ namespace AirportManagement.Views
             try
             {
                 var source = _zboruriController.GetAll();
-                foreach (DataRow row in source.Rows)
+                var rows = source.AsEnumerable()
+                    .OrderBy(row => GetRelevantFlightDate(row))
+                    .ToList();
+
+                foreach (DataRow row in rows)
                 {
+                    var id = row.Table.Columns.Contains("id") && row["id"] != DBNull.Value ? Convert.ToInt32(row["id"]) : 0;
                     var cod = row.Table.Columns.Contains("cod") ? row["cod"]?.ToString() ?? string.Empty : string.Empty;
                     var src = row.Table.Columns.Contains("sursa") ? row["sursa"]?.ToString() ?? string.Empty : string.Empty;
                     var dst = row.Table.Columns.Contains("destinatie") ? row["destinatie"]?.ToString() ?? string.Empty : string.Empty;
                     var plecare = GetDate(row, "plecare");
                     var sosire = GetDate(row, "sosire");
                     var status = row.Table.Columns.Contains("status") ? row["status"]?.ToString() ?? "Programat" : "Programat";
+                    var type = ResolveFlightType(src, dst);
 
                     table.Rows.Add(
-                        string.IsNullOrWhiteSpace(cod) ? $"FL{table.Rows.Count + 1000}" : cod,
-                        ResolveFlightType(src, dst),
-                        ResolveAirline(table.Rows.Count),
+                        string.IsNullOrWhiteSpace(cod) ? "-" : cod,
+                        type,
+                        "-",
                         $"{src} -> {dst}",
-                        plecare.ToString("HH:mm"),
-                        sosire.ToString("HH:mm"),
-                        ResolveGate(table.Rows.Count),
-                        ResolveRunway(table.Rows.Count),
+                        FormatNullableTime(type == "Plecare" ? plecare : sosire),
+                        FormatNullableTime(type == "Plecare" ? plecare : sosire),
+                        ResolveAssignedResource(id, "poarta"),
+                        ResolveAssignedResource(id, "pista"),
                         NormalizeStatus(status)
                     );
                 }
             }
             catch
             {
-            }
-
-            if (table.Rows.Count == 0)
-            {
-                table.Rows.Add("RO123", "Sosire", "TAROM", "Bucuresti -> Cluj", "14:30", "14:30", "A3", "08R", "La timp");
-                table.Rows.Add("W63456", "Plecare", "Wizz Air", "Cluj -> Londra", "15:00", "15:25", "B7", "26L", "Intarziat");
-                table.Rows.Add("FR7821", "Sosire", "Ryanair", "Milano -> Cluj", "15:15", "15:10", "A5", "08R", "Aterizare");
-                table.Rows.Add("LH1234", "Plecare", "Lufthansa", "Cluj -> Munchen", "16:00", "16:00", "B2", "26L", "Imbarcare");
-                table.Rows.Add("OS891", "Sosire", "Austrian", "Viena -> Cluj", "16:30", "16:30", "A1", "08R", "Programat");
             }
 
             return table;
@@ -593,7 +687,11 @@ namespace AirportManagement.Views
             {
                 var source = _alerteController.GetAll();
                 var added = 0;
-                foreach (DataRow row in source.Rows)
+                var rows = source.AsEnumerable()
+                    .OrderByDescending(row => GetDate(row, "data"))
+                    .ToList();
+
+                foreach (DataRow row in rows)
                 {
                     if (added >= 5) break;
                     var message = row.Table.Columns.Contains("mesaj") ? row["mesaj"]?.ToString() ?? string.Empty : string.Empty;
@@ -608,11 +706,16 @@ namespace AirportManagement.Views
 
             if (alertsList.Controls.Count == 0)
             {
-                alertsList.Controls.Add(CreateAlertItem("Zbor W63456 intarziat cu 25 min", "14:05"));
-                alertsList.Controls.Add(CreateAlertItem("Poarta A8 in mentenanta", "13:30"));
-                alertsList.Controls.Add(CreateAlertItem("Bagaj pierdut zbor RO789", "13:15"));
-                alertsList.Controls.Add(CreateAlertItem("Check-in automat B indisponibil", "12:45"));
-                alertsList.Controls.Add(CreateAlertItem("Pasager medical zbor FR234", "12:20"));
+                var empty = new Label
+                {
+                    Text = "Nu exista alerte recente.",
+                    Width = Math.Max(230, alertsList.ClientSize.Width - 6),
+                    Height = 28,
+                    ForeColor = ColorTranslator.FromHtml("#718096"),
+                    Font = new Font("Segoe UI", 7),
+                    BackColor = Color.Transparent
+                };
+                alertsList.Controls.Add(empty);
             }
         }
 
@@ -692,13 +795,91 @@ namespace AirportManagement.Views
                 var status = row["status"]?.ToString() ?? string.Empty;
                 if (status.ToLower().Contains(statusPart)) count++;
             }
-            return Math.Max(7, count);
+            return count;
+        }
+
+        private int CountTodayFlights()
+        {
+            try
+            {
+                var source = _zboruriController.GetAll();
+                var today = DateTime.Today;
+                var count = 0;
+                foreach (DataRow row in source.Rows)
+                {
+                    var plecare = GetDate(row, "plecare");
+                    var sosire = GetDate(row, "sosire");
+                    if (plecare.Date == today || sosire.Date == today)
+                        count++;
+                }
+
+                return count;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        private int CountPassengers()
+        {
+            try
+            {
+                return _pasageriController.GetAll().Rows.Count;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        private string GetGateAvailabilityText()
+        {
+            try
+            {
+                var resources = _resurseController.GetAll();
+                var total = 0;
+                var available = 0;
+
+                foreach (DataRow row in resources.Rows)
+                {
+                    var type = row.Table.Columns.Contains("tip") ? row["tip"]?.ToString() ?? string.Empty : string.Empty;
+                    var name = row.Table.Columns.Contains("nume") ? row["nume"]?.ToString() ?? string.Empty : string.Empty;
+                    var isGate = type.Contains("poarta", StringComparison.OrdinalIgnoreCase)
+                        || type.Contains("gate", StringComparison.OrdinalIgnoreCase)
+                        || name.Contains("poarta", StringComparison.OrdinalIgnoreCase)
+                        || name.Contains("gate", StringComparison.OrdinalIgnoreCase);
+                    if (!isGate) continue;
+
+                    total++;
+                    if (!row.Table.Columns.Contains("disponibila") || ToBool(row["disponibila"]))
+                        available++;
+                }
+
+                return $"{available}/{total}";
+            }
+            catch
+            {
+                return "0/0";
+            }
+        }
+
+        private DateTime GetRelevantFlightDate(DataRow row)
+        {
+            var plecare = GetDate(row, "plecare");
+            var sosire = GetDate(row, "sosire");
+            return plecare <= DateTime.MinValue ? sosire : plecare;
         }
 
         private DateTime GetDate(DataRow row, string column)
         {
-            if (!row.Table.Columns.Contains(column) || row[column] == DBNull.Value) return DateTime.Now;
-            return DateTime.TryParse(row[column].ToString(), out var date) ? date : DateTime.Now;
+            if (!row.Table.Columns.Contains(column) || row[column] == DBNull.Value) return DateTime.MinValue;
+            return DateTime.TryParse(row[column].ToString(), out var date) ? date : DateTime.MinValue;
+        }
+
+        private string FormatNullableTime(DateTime date)
+        {
+            return date <= DateTime.MinValue ? "-" : date.ToString("HH:mm");
         }
 
         private string ResolveFlightType(string source, string destination)
@@ -707,22 +888,40 @@ namespace AirportManagement.Views
             return source.ToLower().Contains("cluj") ? "Plecare" : "Sosire";
         }
 
-        private string ResolveAirline(int index)
+        private string ResolveAssignedResource(int flightId, string resourceType)
         {
-            var airlines = new[] { "TAROM", "Wizz Air", "Ryanair", "Lufthansa", "Austrian", "HiSky" };
-            return airlines[index % airlines.Length];
+            if (flightId <= 0) return "-";
+
+            try
+            {
+                using var conn = DbContext.GetConnection();
+                conn.Open();
+                var nameCol = DbContext.NameColumn("resurse");
+                using var cmd = new MySqlCommand($@"
+SELECT r.`{nameCol}`
+FROM resurse_alocari ra
+JOIN resurse r ON r.id = ra.resursa_id
+WHERE ra.zbor_id=@zborId
+  AND (LOWER(r.tip) LIKE @type OR LOWER(r.`{nameCol}`) LIKE @type)
+ORDER BY r.`{nameCol}`
+LIMIT 1;", conn);
+                cmd.Parameters.AddWithValue("@zborId", flightId);
+                cmd.Parameters.AddWithValue("@type", $"%{resourceType.ToLower()}%");
+                var value = cmd.ExecuteScalar()?.ToString();
+                return string.IsNullOrWhiteSpace(value) ? "-" : value;
+            }
+            catch
+            {
+                return "-";
+            }
         }
 
-        private string ResolveGate(int index)
+        private bool ToBool(object value)
         {
-            var gates = new[] { "A3", "B7", "A5", "B2", "A1", "C4" };
-            return gates[index % gates.Length];
-        }
-
-        private string ResolveRunway(int index)
-        {
-            var runways = new[] { "08R", "26L" };
-            return runways[index % runways.Length];
+            if (value == null || value == DBNull.Value) return false;
+            if (value is bool b) return b;
+            if (int.TryParse(value.ToString(), out var i)) return i != 0;
+            return bool.TryParse(value.ToString(), out var parsed) && parsed;
         }
 
         private string NormalizeStatus(string status)
@@ -868,7 +1067,6 @@ namespace AirportManagement.Views
 
             protected override void OnPaint(PaintEventArgs e)
             {
-                base.OnPaint(e);
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
                 var rect = new Rectangle(0, 0, Width - 1, Height - 1);
                 using var path = BuildPath(rect, Radius);
@@ -877,6 +1075,7 @@ namespace AirportManagement.Views
                 e.Graphics.FillPath(brush, path);
                 e.Graphics.DrawPath(pen, path);
                 Region = new Region(path);
+                base.OnPaint(e);
             }
 
             private static GraphicsPath BuildPath(Rectangle r, int radius)
