@@ -74,12 +74,27 @@ namespace AirportManagement.Data
                         },
                         ["zboruri"] = new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase)
                         {
+                            ["numar_zbor"] = "VARCHAR(50) NULL",
+                            ["companie_aeriana"] = "VARCHAR(150) NULL",
+                            ["tip_zbor"] = "VARCHAR(50) NULL",
+                            ["oras_origine"] = "VARCHAR(255) NULL",
+                            ["oras_destinatie"] = "VARCHAR(255) NULL",
+                            ["data_ora_programata"] = "DATETIME NULL",
+                            ["data_ora_estimata"] = "DATETIME NULL",
+                            ["data_ora_reala"] = "DATETIME NULL",
+                            ["status"] = "VARCHAR(50) NULL",
+                            ["poarta_id"] = "INT NULL",
+                            ["pista_id"] = "INT NULL",
+                            ["numar_total_pasageri"] = "INT NULL",
+                            ["observatii"] = "TEXT NULL",
+                            ["creat_de"] = "INT NULL",
+                            ["data_creare"] = "DATETIME NULL",
+                            ["data_modificare"] = "DATETIME NULL",
                             ["cod"] = "VARCHAR(50) NULL",
                             ["sursa"] = "VARCHAR(255) NULL",
                             ["destinatie"] = "VARCHAR(255) NULL",
                             ["plecare"] = "DATETIME NULL",
                             ["sosire"] = "DATETIME NULL",
-                            ["status"] = "VARCHAR(50) NULL"
                         },
                         ["resurse_alocari"] = new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase)
                         {

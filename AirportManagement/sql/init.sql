@@ -12,12 +12,28 @@ CREATE TABLE IF NOT EXISTS `utilizatori` (
 
 CREATE TABLE IF NOT EXISTS `zboruri` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `numar_zbor` VARCHAR(50),
+  `companie_aeriana` VARCHAR(150),
+  `tip_zbor` VARCHAR(50),
+  `oras_origine` VARCHAR(255),
+  `oras_destinatie` VARCHAR(255),
+  `data_ora_programata` DATETIME,
+  `data_ora_estimata` DATETIME,
+  `data_ora_reala` DATETIME,
+  `status` VARCHAR(50),
+  `poarta_id` INT,
+  `pista_id` INT,
+  `numar_total_pasageri` INT,
+  `observatii` TEXT,
+  `creat_de` INT,
+  `data_creare` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `data_modificare` DATETIME NULL,
   `cod` VARCHAR(50),
   `sursa` VARCHAR(255),
   `destinatie` VARCHAR(255),
   `plecare` DATETIME,
   `sosire` DATETIME,
-  `status` VARCHAR(50)
+  `CONSTRAINT fk_zboruri_creat_de FOREIGN KEY (creat_de) REFERENCES utilizatori(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS `pasageri` (

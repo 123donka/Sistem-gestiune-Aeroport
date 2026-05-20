@@ -10,6 +10,8 @@ namespace AirportManagement.Views
 {
     public class LoginForm : Form
     {
+        public static bool SuppressChildReturn { get; set; }
+
         private TextBox txtUsername;
         private TextBox txtParola;
         private Button btnConectare;
@@ -225,13 +227,19 @@ namespace AirportManagement.Views
             if (role.Contains("admin"))
             {
                 var adminForm = new AdminForm(user);
-                adminForm.FormClosed += (s, e) => this.Show();
+                adminForm.FormClosed += (s, e) =>
+                {
+                    if (!SuppressChildReturn) this.Show();
+                };
                 adminForm.Show();
             }
             else
             {
                 var op = new OperatorDashboard(user);
-                op.FormClosed += (s, e) => this.Show();
+                op.FormClosed += (s, e) =>
+                {
+                    if (!SuppressChildReturn) this.Show();
+                };
                 op.Show();
             }
         }

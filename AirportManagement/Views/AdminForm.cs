@@ -5,8 +5,10 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
+using System.Security;
 using System.Text.Json;
 using System.Windows.Forms;
 using AirportManagement.Controllers;
@@ -22,6 +24,7 @@ namespace AirportManagement.Views
         private readonly UtilizatoriController _controller = new UtilizatoriController();
         private System.Data.DataTable _dt;
         private TextBox txtSearch;
+        private Button btnExport;
         private Button btnAdd;
         private Button btnThemeToggle;
         private Button btnHeaderAction;
@@ -206,6 +209,23 @@ namespace AirportManagement.Views
             txtSearch.TextChanged += (s, e) => ApplyFilter();
             searchContainer.Controls.Add(txtSearch);
 
+            btnExport = new Button
+            {
+                Text = "Export",
+                Width = 124,
+                Height = 40,
+                Top = 8,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = ColorTranslator.FromHtml("#10B981"),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnExport.FlatAppearance.BorderSize = 0;
+            btnExport.Region = new Region(GetRoundedPath(new Rectangle(0, 0, btnExport.Width, btnExport.Height), 10));
+            btnExport.Click += BtnExport_Click;
+
             btnAdd = new Button
             {
                 Text = "+  Adauga Utilizator",
@@ -223,6 +243,7 @@ namespace AirportManagement.Views
             btnAdd.Region = new Region(GetRoundedPath(new Rectangle(0, 0, btnAdd.Width, btnAdd.Height), 10));
             btnAdd.Click += BtnAdd_Click;
 
+            topPanel.Controls.Add(btnExport);
             topPanel.Controls.Add(searchContainer);
             topPanel.Controls.Add(btnAdd);
 
@@ -231,11 +252,13 @@ namespace AirportManagement.Views
                 Dock = DockStyle.Fill,
                 ReadOnly = true,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                ScrollBars = ScrollBars.Both,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 AllowUserToAddRows = false,
                 BackgroundColor = Color.White,
                 BorderStyle = BorderStyle.None
             };
+            tabUsers.AutoScroll = true;
             dgv.EnableHeadersVisualStyles = false;
             dgv.ColumnHeadersDefaultCellStyle.BackColor = ColorTranslator.FromHtml("#F8FAFC");
             dgv.ColumnHeadersDefaultCellStyle.SelectionBackColor = ColorTranslator.FromHtml("#F8FAFC");
@@ -255,6 +278,7 @@ namespace AirportManagement.Views
             dgv.CellFormatting += Dgv_CellFormatting;
             dgv.CellContentClick += Dgv_CellContentClick;
             dgv.CellPainting += Dgv_CellPainting;
+            dgv.DataBindingComplete += Dgv_DataBindingComplete;
 
             tabUsers.Controls.Add(dgv);
             tabUsers.Controls.Add(topPanel);
@@ -287,9 +311,8 @@ namespace AirportManagement.Views
             Resize += (s, e) => LayoutShell();
             LayoutShell();
 
-            tabControl.Resize += (s, e) => PositionAddButton(tabUsers);
-            tabUsers.Resize += (s, e) => PositionAddButton(tabUsers);
-            PositionAddButton(tabUsers);
+            topPanel.Resize += (s, e) => PositionTopButtons(topPanel, searchContainer);
+            PositionTopButtons(topPanel, searchContainer);
             ApplyTheme();
         }
 
@@ -313,10 +336,16 @@ namespace AirportManagement.Views
             return btn;
         }
 
-        private void PositionAddButton(TabPage tabUsers)
+        private void PositionTopButtons(Panel topPanel, Panel searchContainer)
         {
-            if (btnAdd == null) return;
-            btnAdd.Left = Math.Max(0, tabUsers.ClientSize.Width - btnAdd.Width - 6);
+            if (btnExport == null || btnAdd == null) return;
+
+            var rightPadding = 6;
+            btnAdd.Left = Math.Max(0, topPanel.ClientSize.Width - btnAdd.Width - rightPadding);
+            btnExport.Left = Math.Max(0, btnAdd.Left - btnExport.Width - 10);
+
+            searchContainer.Width = Math.Max(240, btnExport.Left - 20);
+            txtSearch.Width = Math.Max(180, searchContainer.Width - 28);
         }
 
         private void BuildSettingsTab(TabPage tabSettings)
@@ -1188,6 +1217,10 @@ namespace AirportManagement.Views
             _dt = _controller.GetAll();
             BuildGrid();
             dgv.DataSource = _dt;
+            if (dgv.Columns.Contains("id"))
+            {
+                dgv.Columns["id"].Visible = false;
+            }
             ApplyTheme();
         }
 
@@ -1229,6 +1262,14 @@ namespace AirportManagement.Views
             }
         }
 
+        private void Dgv_DataBindingComplete(object? sender, DataGridViewBindingCompleteEventArgs e)
+        {
+            if (dgv.Columns.Contains("id"))
+            {
+                dgv.Columns["id"].Visible = false;
+            }
+        }
+
         private void BtnAdd_Click(object? sender, EventArgs e)
         {
             var dlg = new UtilizatorEditForm();
@@ -1238,6 +1279,170 @@ namespace AirportManagement.Views
                 _controller.Create(u);
                 LoadData();
             }
+        }
+
+        private void BtnExport_Click(object? sender, EventArgs e)
+        {
+            using var dialog = new SaveFileDialog
+            {
+                Title = "Export utilizatori",
+                Filter = "Excel Workbook (*.xlsx)|*.xlsx",
+                DefaultExt = "xlsx",
+                AddExtension = true,
+                FileName = $"utilizatori_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx"
+            };
+
+            if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+            try
+            {
+                ExportUsersToExcel(dialog.FileName);
+                MessageBox.Show("Tabelul a fost exportat cu succes.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Exportul a esuat: {ex.Message}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void ExportUsersToExcel(string filePath)
+        {
+            var exportColumns = dgv.Columns
+                .Cast<DataGridViewColumn>()
+                .Where(c => c.Visible && c.Name != "id" && c.Name != "edit" && c.Name != "delete")
+                .ToList();
+
+            var rows = dgv.Rows
+                .Cast<DataGridViewRow>()
+                .Where(r => !r.IsNewRow)
+                .ToList();
+
+            using var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None);
+            using var archive = new ZipArchive(stream, ZipArchiveMode.Create);
+
+            WriteZipEntry(archive, "[Content_Types].xml", GetContentTypesXml());
+            WriteZipEntry(archive, "_rels/.rels", GetRootRelsXml());
+            WriteZipEntry(archive, "xl/workbook.xml", GetWorkbookXml());
+            WriteZipEntry(archive, "xl/_rels/workbook.xml.rels", GetWorkbookRelsXml());
+            WriteZipEntry(archive, "xl/styles.xml", GetStylesXml());
+            WriteZipEntry(archive, "xl/worksheets/sheet1.xml", GetWorksheetXml(exportColumns, rows));
+        }
+
+        private static void WriteZipEntry(ZipArchive archive, string entryName, string content)
+        {
+            var entry = archive.CreateEntry(entryName, CompressionLevel.Optimal);
+            using var writer = new StreamWriter(entry.Open(), Encoding.UTF8);
+            writer.Write(content);
+        }
+
+        private static string GetContentTypesXml() => @"<?xml version=""1.0"" encoding=""UTF-8"" standalone=""yes""?>
+<Types xmlns=""http://schemas.openxmlformats.org/package/2006/content-types"">
+  <Default Extension=""rels"" ContentType=""application/vnd.openxmlformats-package.relationships+xml""/>
+  <Default Extension=""xml"" ContentType=""application/xml""/>
+  <Override PartName=""/xl/workbook.xml"" ContentType=""application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml""/>
+  <Override PartName=""/xl/worksheets/sheet1.xml"" ContentType=""application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml""/>
+  <Override PartName=""/xl/styles.xml"" ContentType=""application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml""/>
+</Types>";
+
+        private static string GetRootRelsXml() => @"<?xml version=""1.0"" encoding=""UTF-8"" standalone=""yes""?>
+<Relationships xmlns=""http://schemas.openxmlformats.org/package/2006/relationships"">
+  <Relationship Id=""rId1"" Type=""http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"" Target=""xl/workbook.xml""/>
+</Relationships>";
+
+        private static string GetWorkbookXml() => @"<?xml version=""1.0"" encoding=""UTF-8"" standalone=""yes""?>
+<workbook xmlns=""http://schemas.openxmlformats.org/spreadsheetml/2006/main"" xmlns:r=""http://schemas.openxmlformats.org/officeDocument/2006/relationships"">
+  <sheets>
+    <sheet name=""Utilizatori"" sheetId=""1"" r:id=""rId1""/>
+  </sheets>
+</workbook>";
+
+        private static string GetWorkbookRelsXml() => @"<?xml version=""1.0"" encoding=""UTF-8"" standalone=""yes""?>
+<Relationships xmlns=""http://schemas.openxmlformats.org/package/2006/relationships"">
+  <Relationship Id=""rId1"" Type=""http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"" Target=""worksheets/sheet1.xml""/>
+  <Relationship Id=""rId2"" Type=""http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles"" Target=""styles.xml""/>
+</Relationships>";
+
+        private static string GetStylesXml() => @"<?xml version=""1.0"" encoding=""UTF-8"" standalone=""yes""?>
+<styleSheet xmlns=""http://schemas.openxmlformats.org/spreadsheetml/2006/main"">
+  <fonts count=""1"">
+    <font>
+      <sz val=""11""/>
+      <color theme=""1""/>
+      <name val=""Calibri""/>
+      <family val=""2""/>
+    </font>
+  </fonts>
+  <fills count=""1"">
+    <fill>
+      <patternFill patternType=""none""/>
+    </fill>
+  </fills>
+  <borders count=""1"">
+    <border>
+      <left/>
+      <right/>
+      <top/>
+      <bottom/>
+      <diagonal/>
+    </border>
+  </borders>
+  <cellStyleXfs count=""1"">
+    <xf numFmtId=""0"" fontId=""0"" fillId=""0"" borderId=""0""/>
+  </cellStyleXfs>
+  <cellXfs count=""1"">
+    <xf numFmtId=""0"" fontId=""0"" fillId=""0"" borderId=""0"" xfId=""0""/>
+  </cellXfs>
+</styleSheet>";
+
+        private string GetWorksheetXml(IReadOnlyList<DataGridViewColumn> columns, IReadOnlyList<DataGridViewRow> rows)
+        {
+            var sb = new StringBuilder();
+            sb.Append(@"<?xml version=""1.0"" encoding=""UTF-8"" standalone=""yes""?>");
+            sb.AppendLine();
+            sb.AppendLine(@"<worksheet xmlns=""http://schemas.openxmlformats.org/spreadsheetml/2006/main"">");
+            sb.AppendLine("  <sheetData>");
+
+            sb.Append("    <row r=\"1\">");
+            for (var i = 0; i < columns.Count; i++)
+            {
+                var cellRef = $"{GetExcelColumnName(i + 1)}1";
+                sb.Append($"<c r=\"{cellRef}\" t=\"inlineStr\"><is><t>{EscapeXml(columns[i].HeaderText)}</t></is></c>");
+            }
+            sb.AppendLine("</row>");
+
+            for (var rowIndex = 0; rowIndex < rows.Count; rowIndex++)
+            {
+                var row = rows[rowIndex];
+                sb.Append($"    <row r=\"{rowIndex + 2}\">");
+                for (var colIndex = 0; colIndex < columns.Count; colIndex++)
+                {
+                    var column = columns[colIndex];
+                    var cellRef = $"{GetExcelColumnName(colIndex + 1)}{rowIndex + 2}";
+                    var value = row.Cells[column.Name].FormattedValue?.ToString() ?? string.Empty;
+                    sb.Append($"<c r=\"{cellRef}\" t=\"inlineStr\"><is><t>{EscapeXml(value)}</t></is></c>");
+                }
+                sb.AppendLine("</row>");
+            }
+
+            sb.AppendLine("  </sheetData>");
+            sb.AppendLine("</worksheet>");
+            return sb.ToString();
+        }
+
+        private static string EscapeXml(string value) => SecurityElement.Escape(value) ?? string.Empty;
+
+        private static string GetExcelColumnName(int columnNumber)
+        {
+            var dividend = columnNumber;
+            var columnName = string.Empty;
+            while (dividend > 0)
+            {
+                var modulo = (dividend - 1) % 26;
+                columnName = Convert.ToChar(65 + modulo) + columnName;
+                dividend = (dividend - modulo) / 26;
+            }
+
+            return columnName;
         }
 
         private void Dgv_CellContentClick(object? sender, DataGridViewCellEventArgs e)

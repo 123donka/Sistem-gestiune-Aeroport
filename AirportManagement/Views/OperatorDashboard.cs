@@ -137,11 +137,7 @@ namespace AirportManagement.Views
             var navTop = 12;
             sidebar.Controls.Add(CreateSidebarButton("Dashboard", navTop, true, DrawGridIcon));
             sidebar.Controls.Add(CreateSidebarButton("Zboruri", navTop + 36, false, DrawPlaneIcon));
-            sidebar.Controls.Add(CreateSidebarButton("Resurse", navTop + 72, false, DrawMapIcon));
-            sidebar.Controls.Add(CreateSidebarButton("Pasageri", navTop + 108, false, DrawUsersIcon));
-            sidebar.Controls.Add(CreateSidebarButton("Alerte", navTop + 144, false, DrawBellIcon));
-            sidebar.Controls.Add(CreateSidebarButton("Rapoarte", navTop + 180, false, DrawChartIcon));
-            sidebar.Controls.Add(CreateSidebarButton("Administrare", navTop + 216, false, DrawShieldIcon));
+            sidebar.Controls.Add(CreateSidebarButton("Administrare", navTop + 72, false, DrawShieldIcon));
 
             mainPanel = new Panel
             {
@@ -371,6 +367,11 @@ namespace AirportManagement.Views
                 }
             }
 
+            if (_embeddedForm is ZboruriForm embeddedZboruri)
+            {
+                embeddedZboruri.SetDarkMode(_darkMode);
+            }
+
             Invalidate(true);
         }
 
@@ -488,10 +489,6 @@ namespace AirportManagement.Views
                 var text = btn.Tag?.ToString() ?? string.Empty;
                 if (text == "Dashboard") btn.Click += (s, e) => ShowDashboard();
                 if (text == "Zboruri") btn.Click += (s, e) => ShowEmbeddedForm("Zboruri", new ZboruriForm());
-                if (text == "Pasageri") btn.Click += (s, e) => ShowEmbeddedForm("Pasageri", new PasageriForm());
-                if (text == "Resurse") btn.Click += (s, e) => ShowEmbeddedForm("Resurse", new ResurseForm());
-                if (text == "Alerte") btn.Click += (s, e) => ShowEmbeddedForm("Alerte", new AlerteForm());
-                if (text == "Rapoarte") btn.Click += (s, e) => ShowEmbeddedForm("Rapoarte", new RapoarteForm());
                 if (text == "Administrare") btn.Click += (s, e) => ShowAccessRestricted();
             }
         }
@@ -529,6 +526,10 @@ namespace AirportManagement.Views
             mainPanel.Controls.Add(form);
             form.Show();
             ApplyTheme();
+            if (form is ZboruriForm zboruriForm)
+            {
+                zboruriForm.SetDarkMode(_darkMode);
+            }
         }
 
         private void ShowAccessRestricted()
@@ -581,20 +582,22 @@ namespace AirportManagement.Views
 
         private void LogoutToLogin()
         {
-            LoginForm? loginForm = null;
-            foreach (Form form in Application.OpenForms)
-            {
-                if (form is LoginForm existingLogin)
-                {
-                    loginForm = existingLogin;
-                    break;
-                }
-            }
+            LoginForm.SuppressChildReturn = true;
 
-            loginForm ??= new LoginForm();
+            var loginForm = new LoginForm
+            {
+                StartPosition = FormStartPosition.CenterScreen
+            };
+
             loginForm.Show();
+            loginForm.BringToFront();
             loginForm.Activate();
-            Close();
+
+            BeginInvoke(new Action(() =>
+            {
+                LoginForm.SuppressChildReturn = false;
+                Close();
+            }));
         }
 
         private void BuildFlightsGrid()
@@ -606,8 +609,6 @@ namespace AirportManagement.Views
             dgvFlights.Columns.Add(new DataGridViewTextBoxColumn { Name = "ruta", HeaderText = "Ruta", DataPropertyName = "ruta", FillWeight = 21 });
             dgvFlights.Columns.Add(new DataGridViewTextBoxColumn { Name = "programat", HeaderText = "Programat", DataPropertyName = "programat", FillWeight = 12 });
             dgvFlights.Columns.Add(new DataGridViewTextBoxColumn { Name = "estimat", HeaderText = "Estimat", DataPropertyName = "estimat", FillWeight = 11 });
-            dgvFlights.Columns.Add(new DataGridViewTextBoxColumn { Name = "poarta", HeaderText = "Poarta", DataPropertyName = "poarta", FillWeight = 9 });
-            dgvFlights.Columns.Add(new DataGridViewTextBoxColumn { Name = "pista", HeaderText = "Pista", DataPropertyName = "pista", FillWeight = 9 });
             dgvFlights.Columns.Add(new DataGridViewTextBoxColumn { Name = "status", HeaderText = "Status", DataPropertyName = "status", FillWeight = 14 });
         }
 
@@ -637,23 +638,23 @@ namespace AirportManagement.Views
                 foreach (DataRow row in rows)
                 {
                     var id = row.Table.Columns.Contains("id") && row["id"] != DBNull.Value ? Convert.ToInt32(row["id"]) : 0;
-                    var cod = row.Table.Columns.Contains("cod") ? row["cod"]?.ToString() ?? string.Empty : string.Empty;
-                    var src = row.Table.Columns.Contains("sursa") ? row["sursa"]?.ToString() ?? string.Empty : string.Empty;
-                    var dst = row.Table.Columns.Contains("destinatie") ? row["destinatie"]?.ToString() ?? string.Empty : string.Empty;
-                    var plecare = GetDate(row, "plecare");
-                    var sosire = GetDate(row, "sosire");
+                    var cod = row.Table.Columns.Contains("numar_zbor") ? row["numar_zbor"]?.ToString() ?? string.Empty : string.Empty;
+                    var companie = row.Table.Columns.Contains("companie_aeriana") ? row["companie_aeriana"]?.ToString() ?? string.Empty : string.Empty;
+                    var src = row.Table.Columns.Contains("oras_origine") ? row["oras_origine"]?.ToString() ?? string.Empty : string.Empty;
+                    var dst = row.Table.Columns.Contains("oras_destinatie") ? row["oras_destinatie"]?.ToString() ?? string.Empty : string.Empty;
+                    var plecare = GetDate(row, "data_ora_programata");
+                    var sosire = GetDate(row, "data_ora_estimata");
                     var status = row.Table.Columns.Contains("status") ? row["status"]?.ToString() ?? "Programat" : "Programat";
-                    var type = ResolveFlightType(src, dst);
+                    var type = row.Table.Columns.Contains("tip_zbor") ? row["tip_zbor"]?.ToString() ?? ResolveFlightType(src, dst) : ResolveFlightType(src, dst);
+                    var ruta = $"{src} -> {dst}";
 
                     table.Rows.Add(
                         string.IsNullOrWhiteSpace(cod) ? "-" : cod,
                         type,
-                        "-",
-                        $"{src} -> {dst}",
+                        string.IsNullOrWhiteSpace(companie) ? "-" : companie,
+                        ruta,
                         FormatNullableTime(type == "Plecare" ? plecare : sosire),
                         FormatNullableTime(type == "Plecare" ? plecare : sosire),
-                        ResolveAssignedResource(id, "poarta"),
-                        ResolveAssignedResource(id, "pista"),
                         NormalizeStatus(status)
                     );
                 }
@@ -674,8 +675,6 @@ namespace AirportManagement.Views
             table.Columns.Add("ruta");
             table.Columns.Add("programat");
             table.Columns.Add("estimat");
-            table.Columns.Add("poarta");
-            table.Columns.Add("pista");
             table.Columns.Add("status");
             return table;
         }
@@ -774,12 +773,13 @@ namespace AirportManagement.Views
             e.CellStyle.ForeColor = Color.White;
             e.CellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             e.CellStyle.Font = new Font("Segoe UI", 6, FontStyle.Bold);
-
-            if (status.Equals("La timp", StringComparison.OrdinalIgnoreCase))
+            if (status.Equals("Programat", StringComparison.OrdinalIgnoreCase))
+                e.CellStyle.BackColor = ColorTranslator.FromHtml("#6B7280");
+            else if (status.Equals("Live", StringComparison.OrdinalIgnoreCase))
                 e.CellStyle.BackColor = ColorTranslator.FromHtml("#0BCF6A");
             else if (status.Equals("Intarziat", StringComparison.OrdinalIgnoreCase))
                 e.CellStyle.BackColor = ColorTranslator.FromHtml("#FF3045");
-            else if (status.Equals("Aterizare", StringComparison.OrdinalIgnoreCase))
+            else if (status.Equals("La timp", StringComparison.OrdinalIgnoreCase))
                 e.CellStyle.BackColor = ColorTranslator.FromHtml("#2D7DFF");
             else if (status.Equals("Imbarcare", StringComparison.OrdinalIgnoreCase))
                 e.CellStyle.BackColor = ColorTranslator.FromHtml("#F4B000");
